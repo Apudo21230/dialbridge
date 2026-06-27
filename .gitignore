@@ -1,0 +1,15 @@
+# Node
+node_modules/
+dist/
+*.log
+.env
+
+# Build
+build/
+.gradle/
+*.xcodeproj/xcuserdata/
+.build/
+DerivedData/
+
+# OS
+.DS_Store

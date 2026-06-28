@@ -17,6 +17,9 @@ import { AdminRepository } from './admin/adminRepository.js';
 import { AdminService } from './admin/adminService.js';
 import { AuditRepository } from './admin/auditRepository.js';
 import { createAdminRouter } from './admin/adminRoutes.js';
+import { requestId } from './middleware/requestId.js';
+import { requestLogger } from './middleware/requestLogger.js';
+import { apiLimiter, authLimiter } from './middleware/rateLimit.js';
 
 export interface AppDeps {
   db?: Db;
@@ -37,6 +40,14 @@ export function createApp(deps: AppDeps = {}): Express {
   const audit = new AuditRepository(db);
 
   const app = express();
+  app.use(requestId);
+  app.use(requestLogger);
+  // Rate limiting (disabled under test to keep the suite deterministic).
+  if (process.env.NODE_ENV !== 'test') {
+    app.use(apiLimiter);
+    app.use('/admin/login', authLimiter);
+    app.use('/client-tokens', authLimiter);
+  }
   // Bearer-token API (no cookies) — CORS open is acceptable; restrict via a
   // reverse proxy / allowlist in production.
   app.use(cors());

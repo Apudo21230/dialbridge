@@ -36,7 +36,7 @@ export function createCallRouter(service: CallService, requireCaller: RequestHan
   const router = Router();
 
   router.post('/calls', requireCaller, async (req, res) => {
-    const { bookingId, creatorNumber, fanNumber, record, ratePerMinute, userRef } = req.body ?? {};
+    const { bookingId, creatorNumber, fanNumber, record, ratePerMinute, userRef, callerRef, receiverRef, ticket } = req.body ?? {};
     if ((bookingId !== undefined && typeof bookingId !== 'string') || !isE164(creatorNumber) || !isE164(fanNumber)) {
       res.status(400).json({ error: 'E.164 creatorNumber/fanNumber required (bookingId optional string)' });
       return;
@@ -45,9 +45,13 @@ export function createCallRouter(service: CallService, requireCaller: RequestHan
       res.status(400).json({ error: 'ratePerMinute must be a positive integer (minor units)' });
       return;
     }
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
     const ctx = {
       integratorId: req.integrator!.id,
-      userRef: req.userRef ?? (typeof userRef === 'string' ? userRef : undefined),
+      userRef: req.userRef ?? str(userRef),
+      callerRef: str(callerRef),
+      receiverRef: str(receiverRef),
+      ticket: str(ticket),
       ratePerMinute: typeof ratePerMinute === 'number' ? ratePerMinute : undefined,
     };
     try {

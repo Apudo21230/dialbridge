@@ -3,7 +3,7 @@ import type { AdminService } from './adminService.js';
 import type { AuditRepository } from './auditRepository.js';
 import type { IntegratorService } from '../integrators/integratorService.js';
 import type { IntegratorRepository } from '../integrators/integratorRepository.js';
-import type { CallRepository } from '../calls/callRepository.js';
+import type { CallRepository, AdminCallRow } from '../calls/callRepository.js';
 import type { CallService } from '../calls/callService.js';
 import type { EndUserRepository } from '../users/endUserRepository.js';
 import { requireAdmin } from '../auth/requireAdmin.js';
@@ -24,6 +24,31 @@ function decodeCursor(s: string): { createdAt: string; id: string } | undefined 
   } catch {
     return undefined;
   }
+}
+
+/** Shared call shape for the admin list + detail. Real phone numbers are never present. */
+function callDto(c: AdminCallRow) {
+  return {
+    id: c.id,
+    integratorName: c.integratorName,
+    userRef: c.userRef,
+    callerRef: c.callerRef,
+    receiverRef: c.receiverRef,
+    ticket: c.ticket,
+    bookingId: c.bookingId,
+    status: c.status,
+    provider: c.provider,
+    virtualNumber: c.virtualNumber,
+    billableSeconds: c.billableSeconds,
+    maxSeconds: c.maxSeconds,
+    ratePerMinute: c.ratePerMinute,
+    cost: c.cost,
+    recordingUrl: c.recordingUrl,
+    createdAt: c.createdAt,
+    ringingAt: c.ringingAt,
+    answeredAt: c.answeredAt,
+    endedAt: c.endedAt,
+  };
 }
 
 export interface AdminRouterDeps {
@@ -166,24 +191,17 @@ export function createAdminRouter(deps: AdminRouterDeps): Router {
     const page = rows.slice(0, limit);
     const nextCursor = hasMore ? encodeCursor(page[page.length - 1]) : null;
 
-    res.status(200).json({
-      calls: page.map((c) => ({
-        id: c.id,
-        integratorName: c.integratorName,
-        userRef: c.userRef,
-        status: c.status,
-        provider: c.provider,
-        virtualNumber: c.virtualNumber,
-        billableSeconds: c.billableSeconds,
-        maxSeconds: c.maxSeconds,
-        ratePerMinute: c.ratePerMinute,
-        cost: c.cost,
-        recordingUrl: c.recordingUrl,
-        createdAt: c.createdAt,
-        endedAt: c.endedAt,
-      })),
-      nextCursor,
-    });
+    res.status(200).json({ calls: page.map(callDto), nextCursor });
+  });
+
+  // One call's full detail (participants, ticket, leg timings, recording).
+  router.get('/admin/calls/:id', requireAdmin, async (req, res) => {
+    const call = await callRepo.findByIdWithIntegrator(req.params.id);
+    if (!call) {
+      res.status(404).json({ error: 'not found' });
+      return;
+    }
+    res.status(200).json(callDto(call));
   });
 
   router.post('/admin/api-keys/:keyId/revoke', requireAdmin, async (req, res) => {

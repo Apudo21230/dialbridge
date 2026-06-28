@@ -50,6 +50,13 @@ export const calls = pgTable('calls', {
   virtualNumber: varchar('virtual_number', { length: 20 }),
   status: varchar('status', { length: 20 }).notNull().default('created'),
   billableSeconds: integer('billable_seconds').notNull().default(0),
+  // Integrator-supplied identifiers (never real phone numbers): who called, who was called, their ticket.
+  callerRef: varchar('caller_ref', { length: 128 }),
+  receiverRef: varchar('receiver_ref', { length: 128 }),
+  ticket: varchar('ticket', { length: 128 }),
+  // Operator-reported leg timings (for the call timeline): ring → answer → end.
+  ringingAt: timestamp('ringing_at', { withTimezone: true }),
+  answeredAt: timestamp('answered_at', { withTimezone: true }),
   // Billing (when the platform meters the call). Money in minor units (e.g. paise).
   userRef: varchar('user_ref', { length: 128 }),
   ratePerMinute: integer('rate_per_minute'),

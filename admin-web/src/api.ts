@@ -69,6 +69,10 @@ export interface CallRecord {
   id: string;
   integratorName: string;
   userRef: string | null;
+  callerRef: string | null;
+  receiverRef: string | null;
+  ticket: string | null;
+  bookingId: string | null;
   status: string;
   provider: string;
   virtualNumber: string | null;
@@ -78,6 +82,8 @@ export interface CallRecord {
   cost: number | null; // paise
   recordingUrl: string | null;
   createdAt: string;
+  ringingAt: string | null;
+  answeredAt: string | null;
   endedAt: string | null;
 }
 
@@ -105,6 +111,8 @@ export const api = {
     if (params.integratorId) q.set('integratorId', params.integratorId);
     return req<{ calls: CallRecord[]; nextCursor: string | null }>(`/admin/calls?${q.toString()}`);
   },
+
+  getCall: (id: string) => req<CallRecord>(`/admin/calls/${id}`),
 
   listUsers: (integratorId: string) =>
     req<{ users: EndUser[] }>(`/admin/integrators/${integratorId}/users`),

@@ -1,5 +1,5 @@
 {
-  "name": "@fancall/backend",
+  "name": "@dialbridge/backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",

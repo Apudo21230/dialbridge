@@ -1,4 +1,4 @@
-◊# PRD — FanCall: Paid Masked-Call Platform (Fan ↔ Creator)
+◊# PRD — Dialbridge: Paid Masked-Call Platform (Fan ↔ Creator)
 
 | Field | Value |
 |---|---|
@@ -6,7 +6,7 @@
 | **Date** | 2026-06-28 |
 | **Status** | Draft for review |
 | **Owner** | (Founder) |
-| **Working name** | "FanCall" (placeholder — rename freely) |
+| **Working name** | "Dialbridge" (placeholder — rename freely) |
 | **Build team** | In-house dev team (Node.js backend, TypeScript) |
 | **Primary market** | India first → Global (phase 4) |
 
@@ -331,7 +331,7 @@ Backend ──rating request / receipts / reminders──> Notification Service
 Keep the structure **simple and standard (not congested)** — a monorepo with three independently-installable subsystems:
 
 ```
-fancall/
+dialbridge/
   backend/      Node.js + TypeScript; deps via npm        (the core IP + orchestration)
   android-sdk/  Android library; consumed via Gradle      (thin client SDK)
   ios-sdk/      Swift package; consumed via SPM            (thin client SDK)

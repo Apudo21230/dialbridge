@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "FanCallSDK",
+    name: "DialbridgeSDK",
     platforms: [.iOS(.v15)],
     products: [
-        .library(name: "FanCallSDK", targets: ["FanCallSDK"])
+        .library(name: "DialbridgeSDK", targets: ["DialbridgeSDK"])
     ],
     targets: [
-        .target(name: "FanCallSDK"),
-        .testTarget(name: "FanCallSDKTests", dependencies: ["FanCallSDK"])
+        .target(name: "DialbridgeSDK"),
+        .testTarget(name: "DialbridgeSDKTests", dependencies: ["DialbridgeSDK"])
     ]
 )

@@ -11,5 +11,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "fancall-android"
-include(":fancall-sdk")
+rootProject.name = "dialbridge-android"
+include(":dialbridge-sdk")

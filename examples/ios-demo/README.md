@@ -101,13 +101,30 @@ Output:
 Optional env: `DIALBRIDGE_BASE_URL` (default `http://localhost:3000`), `DEMO_CREATOR`,
 `DEMO_FAN`, `DEMO_USER`.
 
-### B) SwiftUI app
+### B) SwiftUI app (a real window you can click)
 
-Create an iOS app in Xcode, add the `DialbridgeSDK` package, and drop in the four files
-from `App/`. Set your host + token source in `DemoConfig` (`DialbridgeDemoApp.swift`).
-For a quick local try you can run with `DIALBRIDGE_API_KEY` set as a scheme env var (the
-demo `DemoTokenProvider`); for release, switch `DemoConfig.tokenProvider` to
-`BackendTokenProvider` so the key stays on your server.
+The `App/` files are also a runnable SwiftUI app target. Two ways to launch it:
+
+```bash
+# straight from the terminal — opens a window
+cd examples/ios-demo
+DIALBRIDGE_API_KEY=db_live_xxx swift run DialbridgeDemoApp
+```
+
+or open it in Xcode and press Run:
+
+```bash
+open examples/ios-demo/Package.swift   # Xcode opens the package
+# pick the "DialbridgeDemoApp" scheme → Run
+# (set DIALBRIDGE_API_KEY in the scheme's Run ▸ Arguments ▸ Environment)
+```
+
+Enter the two numbers → **Place masked call** → watch the status and masked line. The
+call also shows up in the admin console (Calls & recordings).
+
+**For your real iOS app:** create an iOS app target in Xcode, add the `DialbridgeSDK`
+package, drop in the four `App/` files, and switch `DemoConfig.tokenProvider` to
+`BackendTokenProvider` so the API key stays on your server.
 
 ---
 

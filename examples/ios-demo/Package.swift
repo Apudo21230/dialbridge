@@ -12,9 +12,16 @@ let package = Package(
         .package(path: "../../ios-sdk")
     ],
     targets: [
+        // Headless flow you can `swift run` to verify end-to-end.
         .executableTarget(
             name: "DialbridgeDemoCLI",
             dependencies: [.product(name: "DialbridgeSDK", package: "ios-sdk")]
+        ),
+        // The SwiftUI app — `swift run DialbridgeDemoApp` (or open Package.swift in Xcode).
+        .executableTarget(
+            name: "DialbridgeDemoApp",
+            dependencies: [.product(name: "DialbridgeSDK", package: "ios-sdk")],
+            path: "App"
         )
     ]
 )

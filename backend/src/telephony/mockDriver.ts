@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import type {
   MaskedCallSession,
   NormalizedCallEvent,
@@ -19,6 +19,19 @@ function isEventType(value: unknown): value is NormalizedCallEventType {
 }
 
 export class MockTelephonyDriver implements TelephonyAdapter {
+  readonly provider = 'mock';
+
+  constructor(private readonly webhookSecret: string = '') {}
+
+  /** HMAC-SHA256 of the raw body, compared in constant time. Rejects when unconfigured. */
+  verifyWebhook(rawBody: Buffer, signature: string | undefined): boolean {
+    if (!this.webhookSecret || !signature) return false;
+    const expected = createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex');
+    const a = Buffer.from(signature);
+    const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
+  }
+
   async startMaskedCall(_params: StartMaskedCallParams): Promise<MaskedCallSession> {
     return {
       providerSessionId: randomUUID(),

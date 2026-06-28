@@ -1,6 +1,8 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
+import { config } from './config.js';
 import { CallService } from './calls/callService.js';
+import { CallRepository } from './calls/callRepository.js';
 import { MockTelephonyDriver } from './telephony/mockDriver.js';
 import { createCallRouter } from './calls/callRoutes.js';
 import { createWebhookRouter } from './telephony/webhookRoutes.js';
@@ -23,9 +25,9 @@ export interface AppDeps {
 
 export function createApp(deps: AppDeps = {}): Express {
   const db = deps.db ?? createDb(createPool());
-  const adapter = deps.adapter ?? new MockTelephonyDriver();
+  const adapter = deps.adapter ?? new MockTelephonyDriver(config.webhookSecret);
 
-  const callService = new CallService(adapter);
+  const callService = new CallService(adapter, new CallRepository(db));
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);
@@ -38,7 +40,8 @@ export function createApp(deps: AppDeps = {}): Express {
   // Bearer-token API (no cookies) — CORS open is acceptable; restrict via a
   // reverse proxy / allowlist in production.
   app.use(cors());
-  app.use(express.json());
+  // Capture the raw body so webhook signatures can be verified over exact bytes.
+  app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = Buffer.from(buf); } }));
 
   app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });

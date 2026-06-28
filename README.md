@@ -1,4 +1,4 @@
-# FanCall
+# Dialbridge
 
 Paid masked-call platform (fan ↔ creator). Monorepo:
 

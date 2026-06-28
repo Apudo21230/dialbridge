@@ -1,4 +1,4 @@
-# FanCall — Plan 01: Project Foundations + Telephony Core (Mock) Implementation Plan
+# Dialbridge — Plan 01: Project Foundations + Telephony Core (Mock) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -40,7 +40,7 @@
 
 `README.md`:
 ```markdown
-# FanCall
+# Dialbridge
 
 Paid masked-call platform (fan ↔ creator). Monorepo:
 
@@ -75,7 +75,7 @@ DerivedData/
 `backend/package.json`:
 ```json
 {
-  "name": "@fancall/backend",
+  "name": "@dialbridge/backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -184,7 +184,7 @@ import { createApp } from './app.js';
 
 const port = Number(process.env.PORT ?? 3000);
 createApp().listen(port, () => {
-  console.log(`FanCall backend listening on :${port}`);
+  console.log(`Dialbridge backend listening on :${port}`);
 });
 ```
 
@@ -208,13 +208,13 @@ git commit -m "feat(backend): scaffold Node+TS project with health endpoint"
 - Create: `android-sdk/settings.gradle.kts`
 - Create: `android-sdk/build.gradle.kts`
 - Create: `android-sdk/gradle.properties`
-- Create: `android-sdk/fancall-sdk/build.gradle.kts`
-- Create: `android-sdk/fancall-sdk/src/main/AndroidManifest.xml`
-- Create: `android-sdk/fancall-sdk/src/main/kotlin/com/fancall/sdk/FanCallClient.kt`
+- Create: `android-sdk/dialbridge-sdk/build.gradle.kts`
+- Create: `android-sdk/dialbridge-sdk/src/main/AndroidManifest.xml`
+- Create: `android-sdk/dialbridge-sdk/src/main/kotlin/com/dialbridge/sdk/DialbridgeClient.kt`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: a Gradle library module `:fancall-sdk` exposing `com.fancall.sdk.FanCallClient(baseUrl: String)` — a placeholder client host apps will later use. Host apps add this as a **Gradle** dependency.
+- Produces: a Gradle library module `:dialbridge-sdk` exposing `com.dialbridge.sdk.DialbridgeClient(baseUrl: String)` — a placeholder client host apps will later use. Host apps add this as a **Gradle** dependency.
 
 - [ ] **Step 1: Create Gradle project files**
 
@@ -233,8 +233,8 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "fancall-android"
-include(":fancall-sdk")
+rootProject.name = "dialbridge-android"
+include(":dialbridge-sdk")
 ```
 
 `android-sdk/build.gradle.kts`:
@@ -254,7 +254,7 @@ kotlin.code.style=official
 
 - [ ] **Step 2: Create the library module**
 
-`android-sdk/fancall-sdk/build.gradle.kts`:
+`android-sdk/dialbridge-sdk/build.gradle.kts`:
 ```kotlin
 plugins {
     id("com.android.library")
@@ -262,7 +262,7 @@ plugins {
 }
 
 android {
-    namespace = "com.fancall.sdk"
+    namespace = "com.dialbridge.sdk"
     compileSdk = 34
 
     defaultConfig {
@@ -282,29 +282,29 @@ dependencies {
 }
 ```
 
-`android-sdk/fancall-sdk/src/main/AndroidManifest.xml`:
+`android-sdk/dialbridge-sdk/src/main/AndroidManifest.xml`:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest />
 ```
 
-`android-sdk/fancall-sdk/src/main/kotlin/com/fancall/sdk/FanCallClient.kt`:
+`android-sdk/dialbridge-sdk/src/main/kotlin/com/dialbridge/sdk/DialbridgeClient.kt`:
 ```kotlin
-package com.fancall.sdk
+package com.dialbridge.sdk
 
 /**
- * Thin client to the FanCall backend. No VoIP/media — the actual call is a
+ * Thin client to the Dialbridge backend. No VoIP/media — the actual call is a
  * normal PSTN call placed by the telecom operator. Fleshed out in the
  * Android SDK plan.
  */
-class FanCallClient(private val baseUrl: String) {
+class DialbridgeClient(private val baseUrl: String) {
     fun version(): String = "0.1.0"
 }
 ```
 
 - [ ] **Step 3: Verify the module builds**
 
-Run: `cd android-sdk && ./gradlew :fancall-sdk:assemble` (or open in Android Studio and sync)
+Run: `cd android-sdk && ./gradlew :dialbridge-sdk:assemble` (or open in Android Studio and sync)
 Expected: BUILD SUCCESSFUL. (If no local Gradle wrapper, run `gradle wrapper` first, or sync in Android Studio.)
 
 - [ ] **Step 4: Commit**
@@ -320,12 +320,12 @@ git commit -m "feat(android-sdk): scaffold Gradle library module"
 
 **Files:**
 - Create: `ios-sdk/Package.swift`
-- Create: `ios-sdk/Sources/FanCallSDK/FanCallClient.swift`
-- Create: `ios-sdk/Tests/FanCallSDKTests/FanCallClientTests.swift`
+- Create: `ios-sdk/Sources/DialbridgeSDK/DialbridgeClient.swift`
+- Create: `ios-sdk/Tests/DialbridgeSDKTests/DialbridgeClientTests.swift`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: a Swift package `FanCallSDK` exposing `FanCallClient(baseURL: String)` with `version() -> String`. Host apps add it via **SPM**.
+- Produces: a Swift package `DialbridgeSDK` exposing `DialbridgeClient(baseURL: String)` with `version() -> String`. Host apps add it via **SPM**.
 
 - [ ] **Step 1: Create the Swift package manifest**
 
@@ -335,28 +335,28 @@ git commit -m "feat(android-sdk): scaffold Gradle library module"
 import PackageDescription
 
 let package = Package(
-    name: "FanCallSDK",
+    name: "DialbridgeSDK",
     platforms: [.iOS(.v15)],
     products: [
-        .library(name: "FanCallSDK", targets: ["FanCallSDK"])
+        .library(name: "DialbridgeSDK", targets: ["DialbridgeSDK"])
     ],
     targets: [
-        .target(name: "FanCallSDK"),
-        .testTarget(name: "FanCallSDKTests", dependencies: ["FanCallSDK"])
+        .target(name: "DialbridgeSDK"),
+        .testTarget(name: "DialbridgeSDKTests", dependencies: ["DialbridgeSDK"])
     ]
 )
 ```
 
 - [ ] **Step 2: Write the failing test**
 
-`ios-sdk/Tests/FanCallSDKTests/FanCallClientTests.swift`:
+`ios-sdk/Tests/DialbridgeSDKTests/DialbridgeClientTests.swift`:
 ```swift
 import XCTest
-@testable import FanCallSDK
+@testable import DialbridgeSDK
 
-final class FanCallClientTests: XCTestCase {
+final class DialbridgeClientTests: XCTestCase {
     func testVersion() {
-        let client = FanCallClient(baseURL: "https://api.example.com")
+        let client = DialbridgeClient(baseURL: "https://api.example.com")
         XCTAssertEqual(client.version(), "0.1.0")
     }
 }
@@ -365,17 +365,17 @@ final class FanCallClientTests: XCTestCase {
 - [ ] **Step 3: Run tests to verify they fail**
 
 Run: `cd ios-sdk && swift test`
-Expected: FAIL — `FanCallClient` not found.
+Expected: FAIL — `DialbridgeClient` not found.
 
 - [ ] **Step 4: Write minimal implementation**
 
-`ios-sdk/Sources/FanCallSDK/FanCallClient.swift`:
+`ios-sdk/Sources/DialbridgeSDK/DialbridgeClient.swift`:
 ```swift
 import Foundation
 
-/// Thin client to the FanCall backend. No VoIP/media — the actual call is a
+/// Thin client to the Dialbridge backend. No VoIP/media — the actual call is a
 /// normal PSTN call placed by the telecom operator. Fleshed out in the iOS SDK plan.
-public struct FanCallClient {
+public struct DialbridgeClient {
     private let baseURL: String
 
     public init(baseURL: String) {

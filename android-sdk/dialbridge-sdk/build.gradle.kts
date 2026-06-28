@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.fancall.sdk"
+    namespace = "com.dialbridge.sdk"
     compileSdk = 34
 
     defaultConfig {

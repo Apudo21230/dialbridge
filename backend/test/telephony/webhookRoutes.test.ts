@@ -1,15 +1,27 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { MockTelephonyDriver } from '../../src/telephony/mockDriver.js';
+import { createPool, createDb } from '../../src/db/client.js';
+import { IntegratorService } from '../../src/integrators/integratorService.js';
+import { IntegratorRepository } from '../../src/integrators/integratorRepository.js';
 import type { CallService } from '../../src/calls/callService.js';
+
+const pool = createPool();
+const db = createDb(pool);
+let apiKey: string;
+
+beforeAll(async () => {
+  apiKey = (await new IntegratorService(new IntegratorRepository(db)).onboard('webhook-test')).apiKey;
+});
+afterAll(async () => { await pool.end(); });
 
 describe('POST /telephony/webhook', () => {
   it('applies a completed event to an existing call (end-to-end)', async () => {
     const adapter = new MockTelephonyDriver();
-    const app = createApp({ adapter });
+    const app = createApp({ adapter, db });
 
-    const start = await request(app).post('/calls').send({
+    const start = await request(app).post('/calls').set('Authorization', `Bearer ${apiKey}`).send({
       bookingId: 'b1',
       creatorNumber: '+919800000001',
       fanNumber: '+919800000002',
@@ -32,7 +44,7 @@ describe('POST /telephony/webhook', () => {
   });
 
   it('reports applied=false for an unknown session', async () => {
-    const res = await request(createApp()).post('/telephony/webhook').send({
+    const res = await request(createApp({ db })).post('/telephony/webhook').send({
       providerSessionId: 'unknown-provider-id',
       type: 'completed',
       at: '2026-06-28T10:00:00.000Z',
@@ -42,7 +54,7 @@ describe('POST /telephony/webhook', () => {
   });
 
   it('returns 400 on a malformed payload', async () => {
-    const res = await request(createApp())
+    const res = await request(createApp({ db }))
       .post('/telephony/webhook')
       .send({ type: 'completed' }); // missing providerSessionId
     expect(res.status).toBe(400);

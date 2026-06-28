@@ -12,6 +12,14 @@
 
 > **One-line pitch:** A "Cameo for phone calls" — fans pay to have a real, private phone call with a creator. The creator receives a **normal cellular call** (no app open, no internet needed). Neither party ever sees the other's real number, because the call is bridged through a **telecom operator's own number-masking API**.
 
+> ### ⚠️ MODEL CORRECTION (2026-06-28) — supersedes the B2C framing below
+> Dialbridge is a **B2B masked-calling SDK / API**, not its own consumer app. **Integrators** (other businesses/apps) embed our SDK / call our API to add private masked calling to *their* product. Therefore:
+> - **Integrators authenticate with an API key** (server-side). The mobile SDK uses a short-lived client token minted by the integrator's backend — never a raw secret in the app.
+> - **The integrator supplies the numbers** to bridge (and is responsible for callee consent / their own end-user accounts, wallet, booking UI).
+> - **There is NO Dialbridge end-user (fan/creator) login** — no OTP/email signup for end-users. Auth = integrator API key + abuse/consent controls.
+> - We provide: the masked-calling **API** (`POST /calls` etc.), **client SDKs** (Android/iOS), webhooks, and recording.
+> - Sections below describing fan signup, wallet, booking UI, ratings (§3–§9) are **the integrator's responsibility** in this model; treat them as optional API capabilities we may expose, not screens we build. Auth specifics in those sections are **superseded by this note**.
+
 ---
 
 ## 1. Background & the core insight
@@ -102,9 +110,11 @@ interface TelephonyAdapter {
 | Masking session / "context" lifecycle | API to create/destroy | Orchestrate per booking |
 | In-call recording | Provides (capture/announce) | Pull & store on our storage; consent UX |
 | Webhooks (ringing/answered/ended/failed) | Emits | Receive, normalise, reconcile |
-| Number-pool sizing/collision | **TBD — confirm with DIGO** whether the masking-session API auto-allocates the proxy number, or we provision & manage a VCN pool | Manage mapping either way |
+| Number-pool sizing/collision | **DECIDED — per-session pool model.** A free virtual number is allocated from a rented pool per active session and released on call end. Hard rule: a creator's two *concurrent* calls never share a number (Redis lock). Pool size = peak concurrent calls. | Manage allocation/mapping/release |
 
-> **Open item (confirm with DIGO before build):** exact masking-session ("context") model, whether proxy numbers are auto-allocated per session or drawn from a pool we rent, per-minute vs per-leg billing, and per-session concurrency limits. See §15.
+> **Masking-number model (DECIDED):** per-session pool number — receiver sees "a Dialbridge virtual number" (may repeat across non-overlapping calls, always distinct for a creator's concurrent calls). Real numbers are never shown to either party.
+>
+> **Open item (confirm with DIGO before build):** exact masking-session ("context") API — whether DIGO auto-allocates the proxy or draws from a pool we rent, per-minute vs per-leg billing, and per-session concurrency limits. See §15.
 
 ---
 

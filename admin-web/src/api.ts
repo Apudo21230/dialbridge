@@ -48,6 +48,31 @@ export interface IntegratorDetail extends IntegratorSummary {
   keys: ApiKeyInfo[];
 }
 
+export interface Overview {
+  integrators: number;
+  calls: number;
+  activeCalls: number;
+  recordings: number;
+  billableSeconds: number;
+  revenue: number; // minor units (paise)
+}
+
+export interface CallRecord {
+  id: string;
+  integratorName: string;
+  userRef: string | null;
+  status: string;
+  provider: string;
+  virtualNumber: string | null;
+  billableSeconds: number;
+  maxSeconds: number | null;
+  ratePerMinute: number | null; // paise / minute
+  cost: number | null; // paise
+  recordingUrl: string | null;
+  createdAt: string;
+  endedAt: string | null;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     req<{ token: string }>('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -61,6 +86,16 @@ export const api = {
   },
 
   getIntegrator: (id: string) => req<IntegratorDetail>(`/admin/integrators/${id}`),
+
+  overview: () => req<Overview>('/admin/overview'),
+
+  listCalls: (params: { status?: string; cursor?: string; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set('status', params.status);
+    if (params.cursor) q.set('cursor', params.cursor);
+    if (params.limit) q.set('limit', String(params.limit));
+    return req<{ calls: CallRecord[]; nextCursor: string | null }>(`/admin/calls?${q.toString()}`);
+  },
 
   createIntegrator: (name: string) =>
     req<{ integratorId: string; apiKey: string; keyId: string }>('/admin/integrators', {

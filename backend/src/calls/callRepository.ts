@@ -1,6 +1,19 @@
-import { eq, and, or, lt, ne, desc, inArray, isNotNull } from 'drizzle-orm';
+import { eq, and, or, lt, ne, desc, inArray, isNotNull, count, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { calls, type CallRow } from '../db/schema.js';
+import { calls, integrators, type CallRow } from '../db/schema.js';
+
+export interface AdminCallRow extends CallRow {
+  integratorName: string;
+}
+
+export interface AdminOverview {
+  integrators: number;
+  calls: number;
+  activeCalls: number;
+  recordings: number;
+  billableSeconds: number;
+  revenue: number;
+}
 
 export interface NewCall {
   integratorId: string;
@@ -115,5 +128,49 @@ export class CallRepository {
       .where(and(...conds))
       .orderBy(desc(calls.createdAt), desc(calls.id))
       .limit(limit);
+  }
+
+  /** Admin: every integrator's calls, newest first, with the integrator name joined in. */
+  async listAllWithIntegrator(
+    limit: number,
+    cursor?: { createdAt: string; id: string },
+    status?: string,
+  ): Promise<AdminCallRow[]> {
+    const conds = [];
+    if (status) conds.push(eq(calls.status, status));
+    if (cursor) {
+      const c = new Date(cursor.createdAt);
+      conds.push(or(lt(calls.createdAt, c), and(eq(calls.createdAt, c), lt(calls.id, cursor.id)))!);
+    }
+    const rows = await this.db
+      .select({ call: calls, integratorName: integrators.name })
+      .from(calls)
+      .innerJoin(integrators, eq(calls.integratorId, integrators.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(calls.createdAt), desc(calls.id))
+      .limit(limit);
+    return rows.map((r) => ({ ...r.call, integratorName: r.integratorName }));
+  }
+
+  /** Admin: platform-wide counters for the overview dashboard. */
+  async adminOverview(): Promise<AdminOverview> {
+    const [r] = await this.db
+      .select({
+        calls: count(),
+        activeCalls: sql<number>`count(*) filter (where ${calls.status} in ('ringing','in_progress'))`,
+        recordings: sql<number>`count(*) filter (where ${calls.recordingUrl} is not null)`,
+        billableSeconds: sql<number>`coalesce(sum(${calls.billableSeconds}), 0)`,
+        revenue: sql<number>`coalesce(sum(${calls.cost}), 0)`,
+      })
+      .from(calls);
+    const [ic] = await this.db.select({ n: count() }).from(integrators);
+    return {
+      integrators: Number(ic.n),
+      calls: Number(r.calls),
+      activeCalls: Number(r.activeCalls),
+      recordings: Number(r.recordings),
+      billableSeconds: Number(r.billableSeconds),
+      revenue: Number(r.revenue),
+    };
   }
 }

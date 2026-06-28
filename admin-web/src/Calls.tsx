@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type CallRecord } from './api';
 import { Waveform } from './ui';
 import { CallsTable } from './CallsTable';
+import { CallDetail } from './CallDetail';
 
 const FILTERS = [
   { id: '', label: 'All' },
@@ -17,6 +18,7 @@ export function Calls() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   async function load(cursor?: string, append = false) {
     try {
@@ -58,7 +60,7 @@ export function Calls() {
           <span className="faint" style={{ fontSize: 12 }}>Real phone numbers are masked — never stored.</span>
         </div>
         <div className="panel__body">
-          {loading ? <div className="empty"><Waveform /></div> : <CallsTable calls={calls} />}
+          {loading ? <div className="empty"><Waveform /></div> : <CallsTable calls={calls} onOpen={setOpenId} />}
         </div>
       </div>
 
@@ -67,6 +69,8 @@ export function Calls() {
           Load more
         </button>
       )}
+
+      {openId && <CallDetail id={openId} onClose={() => setOpenId(null)} />}
     </>
   );
 }

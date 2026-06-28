@@ -38,6 +38,9 @@ function safeRecordingUrl(url: string | undefined): string | undefined {
 export interface CallContext {
   integratorId: string;
   userRef?: string;
+  callerRef?: string;
+  receiverRef?: string;
+  ticket?: string;
   ratePerMinute?: number;
 }
 
@@ -73,6 +76,9 @@ export class CallService {
       virtualNumber: session.virtualNumber,
       status: session.status,
       userRef: ctx.userRef,
+      callerRef: ctx.callerRef,
+      receiverRef: ctx.receiverRef,
+      ticket: ctx.ticket,
       ratePerMinute: ctx.ratePerMinute,
       maxSeconds,
     });
@@ -80,11 +86,14 @@ export class CallService {
 
   async handleEvent(event: NormalizedCallEvent): Promise<CallRow | undefined> {
     const terminal = event.type === 'completed' || event.type === 'failed';
+    const at = new Date(event.at);
     const updated = await this.repo.applyEvent(this.adapter.provider, event.providerSessionId, {
       status: EVENT_TO_STATUS[event.type],
       billableSeconds: event.billableSeconds,
       recordingUrl: safeRecordingUrl(event.recordingUrl),
-      endedAt: terminal ? new Date(event.at) : undefined,
+      ringingAt: event.type === 'ringing' ? at : undefined,
+      answeredAt: event.type === 'answered' ? at : undefined,
+      endedAt: terminal ? at : undefined,
     });
 
     // On call end, deduct the actual cost from the end-user's wallet.

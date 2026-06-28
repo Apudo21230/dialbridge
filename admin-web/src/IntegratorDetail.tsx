@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type IntegratorDetail, type EndUser, type CallRecord } from './api';
 import { StatusBadge, KeyLine, CopyButton, Waveform, money, when, initials } from './ui';
 import { CallsTable } from './CallsTable';
+import { CallDetail } from './CallDetail';
 
 type Tab = 'keys' | 'users' | 'calls';
 
@@ -14,6 +15,7 @@ export function IntegratorDetailView({ id, onBack }: { id: string; onBack: () =>
 
   const [users, setUsers] = useState<EndUser[] | null>(null);
   const [calls, setCalls] = useState<CallRecord[] | null>(null);
+  const [openCallId, setOpenCallId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
   async function load() {
@@ -208,10 +210,12 @@ export function IntegratorDetailView({ id, onBack }: { id: string; onBack: () =>
             <span className="faint" style={{ fontSize: 12 }}>Real phone numbers are masked — never stored.</span>
           </div>
           <div className="panel__body">
-            {!calls ? <div className="empty"><Waveform /></div> : <CallsTable calls={calls} showIntegrator={false} />}
+            {!calls ? <div className="empty"><Waveform /></div> : <CallsTable calls={calls} showIntegrator={false} onOpen={setOpenCallId} />}
           </div>
         </div>
       )}
+
+      {openCallId && <CallDetail id={openCallId} onClose={() => setOpenCallId(null)} />}
     </>
   );
 }

@@ -2,7 +2,15 @@ import { type CallRecord } from './api';
 import { StatusBadge, CopyButton, Waveform, money, duration, when } from './ui';
 
 /** Shared call log — used both platform-wide and scoped to one integrator. */
-export function CallsTable({ calls, showIntegrator = true }: { calls: CallRecord[]; showIntegrator?: boolean }) {
+export function CallsTable({
+  calls,
+  showIntegrator = true,
+  onOpen,
+}: {
+  calls: CallRecord[];
+  showIntegrator?: boolean;
+  onOpen?: (id: string) => void;
+}) {
   if (calls.length === 0) {
     return (
       <div className="empty">
@@ -29,7 +37,7 @@ export function CallsTable({ calls, showIntegrator = true }: { calls: CallRecord
       </thead>
       <tbody>
         {calls.map((c) => (
-          <tr key={c.id}>
+          <tr key={c.id} className={onOpen ? 'is-click' : ''} onClick={onOpen ? () => onOpen(c.id) : undefined}>
             {showIntegrator && <td>{c.integratorName}</td>}
             <td className="mono muted">{c.userRef ?? '—'}</td>
             <td><StatusBadge status={c.status} /></td>
@@ -38,7 +46,7 @@ export function CallsTable({ calls, showIntegrator = true }: { calls: CallRecord
               {duration(c.billableSeconds)}
             </td>
             <td className="num">{money(c.cost)}</td>
-            <td>
+            <td onClick={(e) => e.stopPropagation()}>
               {c.recordingUrl ? (
                 <span className="row" style={{ gap: 7 }}>
                   <a className="btn btn--sm btn--ghost" href={c.recordingUrl} target="_blank" rel="noreferrer">▶ Play</a>

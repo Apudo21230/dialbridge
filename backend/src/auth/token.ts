@@ -1,16 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 
-export interface TokenPayload {
+export interface AdminTokenPayload {
   sub: string;
   role: string;
 }
 
-export function signToken(payload: TokenPayload): string {
-  return jwt.sign(payload, config.jwtSecret, { expiresIn: '7d' });
+export function signAdminToken(payload: AdminTokenPayload): string {
+  return jwt.sign(payload, config.jwtSecret, { expiresIn: '2h' });
 }
 
-export function verifyToken(token: string): TokenPayload {
-  const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
+export function verifyAdminToken(token: string): AdminTokenPayload {
+  const decoded = jwt.verify(token, config.jwtSecret) as AdminTokenPayload;
   return { sub: String(decoded.sub), role: String(decoded.role) };
 }

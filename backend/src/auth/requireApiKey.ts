@@ -12,18 +12,21 @@ declare global {
 
 export function createRequireApiKey(service: IntegratorService) {
   return async function requireApiKey(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const header = req.headers.authorization ?? '';
-    const [scheme, key] = header.split(' ');
+    const [scheme, key] = (req.headers.authorization ?? '').split(' ');
     if (scheme !== 'Bearer' || !key) {
       res.status(401).json({ error: 'missing API key' });
       return;
     }
-    const integrator = await service.authenticate(key);
-    if (!integrator) {
+    const result = await service.authenticate(key);
+    if (!result) {
       res.status(401).json({ error: 'invalid API key' });
       return;
     }
-    req.integrator = integrator;
+    if ('suspended' in result) {
+      res.status(403).json({ error: 'integrator suspended' });
+      return;
+    }
+    req.integrator = { id: result.integratorId };
     next();
   };
 }

@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "test": "DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest run",
-    "test:watch": "DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest"
+    "test:watch": "DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest",
+    "db:seed-admin": "tsx src/db/seedAdmin.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

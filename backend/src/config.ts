@@ -16,6 +16,6 @@ function requireSecret(name: string, devFallback: string): string {
 
 export const config = {
   databaseUrl: process.env.DATABASE_URL ?? 'postgresql://apple@localhost:5432/dialbridge_dev',
-  adminSecret: requireSecret('ADMIN_SECRET', 'dev-admin-secret-change-me'),
+  jwtSecret: requireSecret('JWT_SECRET', 'dev-jwt-secret-change-me-please'),
   port: Number(process.env.PORT ?? 3000),
 };

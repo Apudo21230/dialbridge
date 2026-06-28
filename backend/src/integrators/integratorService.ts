@@ -1,5 +1,6 @@
 import type { IntegratorRepository } from './integratorRepository.js';
 import { generateApiKey, hashApiKey } from '../auth/apiKey.js';
+import { verifyClientToken } from '../auth/clientToken.js';
 
 export type AuthResult = { integratorId: string } | { suspended: true } | undefined;
 
@@ -27,5 +28,15 @@ export class IntegratorService {
     if (found.integrator.status !== 'active') return { suspended: true };
     void this.repo.touchApiKey(found.key.id); // lazy last_used_at (fire-and-forget)
     return { integratorId: found.integrator.id };
+  }
+
+  /** Authenticate a client token (minted via /client-tokens). Re-checks the integrator is active. */
+  async authenticateClientToken(token: string): Promise<AuthResult> {
+    const claims = verifyClientToken(token);
+    if (!claims) return undefined;
+    const integrator = await this.repo.findById(claims.integratorId);
+    if (!integrator) return undefined;
+    if (integrator.status !== 'active') return { suspended: true };
+    return { integratorId: integrator.id };
   }
 }

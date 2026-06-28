@@ -9,6 +9,8 @@ import { createPool, createDb, type Db } from './db/client.js';
 import { IntegratorRepository } from './integrators/integratorRepository.js';
 import { IntegratorService } from './integrators/integratorService.js';
 import { createRequireApiKey } from './auth/requireApiKey.js';
+import { createRequireCaller } from './auth/requireCaller.js';
+import { createClientTokenRouter } from './integrators/clientTokenRoutes.js';
 import { AdminRepository } from './admin/adminRepository.js';
 import { AdminService } from './admin/adminService.js';
 import { AuditRepository } from './admin/auditRepository.js';
@@ -27,6 +29,7 @@ export function createApp(deps: AppDeps = {}): Express {
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);
+  const requireCaller = createRequireCaller(integratorService);
 
   const adminService = new AdminService(new AdminRepository(db));
   const audit = new AuditRepository(db);
@@ -43,8 +46,10 @@ export function createApp(deps: AppDeps = {}): Express {
 
   // Admin console (login is open; the rest require an admin token).
   app.use(createAdminRouter({ adminService, integratorService, integratorRepo, audit }));
-  // Masked-call API — requires a valid (active) integrator API key.
-  app.use(createCallRouter(callService, requireApiKey));
+  // Client-token minting — integrator's backend only (API key).
+  app.use(createClientTokenRouter(requireApiKey));
+  // Masked-call API — accepts an API key OR a client token (active integrator).
+  app.use(createCallRouter(callService, requireCaller));
   // Operator-facing webhook — no API key.
   app.use(createWebhookRouter(adapter, callService));
 

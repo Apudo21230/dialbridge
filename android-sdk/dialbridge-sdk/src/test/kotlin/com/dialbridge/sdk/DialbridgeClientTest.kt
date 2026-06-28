@@ -45,4 +45,17 @@ class DialbridgeClientTest {
         assertEquals(403, ex.status)
         assertEquals("integrator suspended", ex.message)
     }
+
+    @Test
+    fun rejectsNonHttpsBaseUrl() {
+        assertFailsWith<IllegalArgumentException> {
+            DialbridgeClient("http://evil.example.com", "tok", FakeTransport(200, "{}"))
+        }
+    }
+
+    @Test
+    fun rejectsInvalidSessionId() = runTest {
+        val client = DialbridgeClient("https://api.example.com", "tok", FakeTransport(200, "{}"))
+        assertFailsWith<IllegalArgumentException> { client.getCall("../admin") }
+    }
 }

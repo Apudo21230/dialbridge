@@ -16,6 +16,16 @@ class DialbridgeClient(
     private val baseUrl: String = baseUrl.trimEnd('/')
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
+    init {
+        require(
+            this.baseUrl.startsWith("https://") ||
+                this.baseUrl.startsWith("http://localhost") ||
+                this.baseUrl.startsWith("http://127.0.0.1"),
+        ) { "baseUrl must use https:// (http is allowed only for localhost)" }
+    }
+
+    private val sessionIdPattern = Regex("[A-Za-z0-9_-]{1,64}")
+
     @Serializable
     private data class CreateCallRequest(
         val creatorNumber: String,
@@ -36,7 +46,10 @@ class DialbridgeClient(
     }
 
     /** Fetch the latest status of a call. */
-    suspend fun getCall(sessionId: String): CallSession = request("GET", "/calls/$sessionId", null)
+    suspend fun getCall(sessionId: String): CallSession {
+        require(sessionIdPattern.matches(sessionId)) { "invalid sessionId" }
+        return request("GET", "/calls/$sessionId", null)
+    }
 
     private suspend fun request(method: String, path: String, body: String?): CallSession {
         val response = transport.send(method, baseUrl + path, clientToken, body)

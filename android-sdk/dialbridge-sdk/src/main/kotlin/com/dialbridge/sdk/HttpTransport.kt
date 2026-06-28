@@ -14,8 +14,17 @@ interface HttpTransport {
     suspend fun send(method: String, url: String, token: String, body: String?): HttpResponse
 }
 
-class OkHttpTransport(private val client: OkHttpClient = OkHttpClient()) : HttpTransport {
+class OkHttpTransport(private val client: OkHttpClient = defaultClient()) : HttpTransport {
     private val jsonMedia = "application/json".toMediaType()
+
+    companion object {
+        /** Do not auto-follow redirects: the bearer token must never be replayed to a redirect target. */
+        private fun defaultClient(): OkHttpClient =
+            OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .build()
+    }
 
     override suspend fun send(method: String, url: String, token: String, body: String?): HttpResponse =
         withContext(Dispatchers.IO) {

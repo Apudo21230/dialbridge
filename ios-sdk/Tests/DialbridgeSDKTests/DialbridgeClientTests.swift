@@ -50,4 +50,28 @@ final class DialbridgeClientTests: XCTestCase {
             XCTFail("unexpected error type: \(error)")
         }
     }
+
+    func testRejectsNonHttpsBaseURL() async {
+        let client = DialbridgeClient(baseURL: "http://evil.example.com", clientToken: "tok", transport: FakeTransport(status: 200, json: "{}"))
+        do {
+            _ = try await client.createCall(creatorNumber: "+919800000001", fanNumber: "+919800000002")
+            XCTFail("expected an https error")
+        } catch let error as DialbridgeError {
+            XCTAssertEqual(error.status, 0)
+        } catch {
+            XCTFail("unexpected error type: \(error)")
+        }
+    }
+
+    func testRejectsInvalidSessionId() async {
+        let client = DialbridgeClient(baseURL: "https://api.example.com", clientToken: "tok", transport: FakeTransport(status: 200, json: "{}"))
+        do {
+            _ = try await client.getCall(sessionId: "../admin")
+            XCTFail("expected an invalid sessionId error")
+        } catch let error as DialbridgeError {
+            XCTAssertEqual(error.message, "invalid sessionId")
+        } catch {
+            XCTFail("unexpected error type: \(error)")
+        }
+    }
 }

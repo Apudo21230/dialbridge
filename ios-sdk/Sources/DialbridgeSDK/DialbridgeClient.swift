@@ -14,6 +14,13 @@ public struct DialbridgeClient {
         self.transport = transport
     }
 
+    private func requireSecureBaseURL() throws {
+        let ok = baseURL.hasPrefix("https://") || baseURL.hasPrefix("http://localhost") || baseURL.hasPrefix("http://127.0.0.1")
+        if !ok {
+            throw DialbridgeError(status: 0, message: "baseURL must use https:// (http allowed only for localhost)")
+        }
+    }
+
     /// Start a masked call between two numbers. Neither party sees the other's real number.
     public func createCall(creatorNumber: String, fanNumber: String, bookingId: String? = nil) async throws -> CallSession {
         var payload: [String: String] = ["creatorNumber": creatorNumber, "fanNumber": fanNumber]
@@ -24,10 +31,14 @@ public struct DialbridgeClient {
 
     /// Fetch the latest status of a call.
     public func getCall(sessionId: String) async throws -> CallSession {
-        try await request(method: "GET", path: "/calls/\(sessionId)", body: nil)
+        guard sessionId.range(of: "^[A-Za-z0-9_-]{1,64}$", options: .regularExpression) != nil else {
+            throw DialbridgeError(status: 0, message: "invalid sessionId")
+        }
+        return try await request(method: "GET", path: "/calls/\(sessionId)", body: nil)
     }
 
     private func request(method: String, path: String, body: Data?) async throws -> CallSession {
+        try requireSecureBaseURL()
         guard let url = URL(string: baseURL + path) else {
             throw DialbridgeError(status: 0, message: "invalid URL")
         }

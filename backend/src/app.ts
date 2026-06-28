@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
-import { config } from './config.js';
+import { config, recordingStorage } from './config.js';
+import { S3RecordingStore } from './recording/recordingStore.js';
 import { CallService } from './calls/callService.js';
 import { CallRepository } from './calls/callRepository.js';
 import { WalletRepository } from './billing/walletRepository.js';
@@ -35,7 +36,8 @@ export function createApp(deps: AppDeps = {}): Express {
 
   const walletRepo = new WalletRepository(db);
   const billing = new BillingService(walletRepo);
-  const callService = new CallService(adapter, new CallRepository(db), billing);
+  const recordingStore = recordingStorage ? new S3RecordingStore(recordingStorage) : undefined;
+  const callService = new CallService(adapter, new CallRepository(db), billing, recordingStore);
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);

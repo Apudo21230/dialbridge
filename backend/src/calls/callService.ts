@@ -6,6 +6,7 @@ import type {
 } from '../telephony/types.js';
 import type { CallRepository } from './callRepository.js';
 import type { BillingService } from '../billing/billingService.js';
+import type { RecordingStore } from '../recording/recordingStore.js';
 import type { CallRow } from '../db/schema.js';
 
 const EVENT_TO_STATUS: Record<NormalizedCallEventType, string> = {
@@ -36,6 +37,7 @@ export class CallService {
     private readonly adapter: TelephonyAdapter,
     private readonly repo: CallRepository,
     private readonly billing: BillingService,
+    private readonly recordingStore?: RecordingStore,
   ) {}
 
   async startCall(params: StartMaskedCallParams, ctx: CallContext): Promise<CallRow> {
@@ -80,6 +82,17 @@ export class CallService {
       );
       await this.repo.setCost(updated.id, cost);
       updated.cost = cost;
+    }
+
+    // On call end, re-store the provider recording to our own storage.
+    if (updated && terminal && updated.recordingUrl && this.recordingStore) {
+      try {
+        const storedUrl = await this.recordingStore.store(updated.id, updated.recordingUrl);
+        await this.repo.setRecordingUrl(updated.id, storedUrl);
+        updated.recordingUrl = storedUrl;
+      } catch {
+        // Keep the provider URL if our storage fails; never fail the webhook.
+      }
     }
     return updated;
   }

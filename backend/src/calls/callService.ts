@@ -7,7 +7,16 @@ import type {
 import type { CallRepository } from './callRepository.js';
 import type { BillingService } from '../billing/billingService.js';
 import type { RecordingStore } from '../recording/recordingStore.js';
+import type { EndUserRepository } from '../users/endUserRepository.js';
 import type { CallRow } from '../db/schema.js';
+
+/** Thrown when a blocked end-user tries to start a call. Mapped to 403 at the route. */
+export class UserBlockedError extends Error {
+  constructor() {
+    super('user blocked');
+    this.name = 'UserBlockedError';
+  }
+}
 
 const EVENT_TO_STATUS: Record<NormalizedCallEventType, string> = {
   ringing: 'ringing',
@@ -37,10 +46,17 @@ export class CallService {
     private readonly adapter: TelephonyAdapter,
     private readonly repo: CallRepository,
     private readonly billing: BillingService,
+    private readonly endUsers: EndUserRepository,
     private readonly recordingStore?: RecordingStore,
   ) {}
 
   async startCall(params: StartMaskedCallParams, ctx: CallContext): Promise<CallRow> {
+    // A blocked end-user cannot start a call, regardless of wallet balance.
+    if (ctx.userRef) {
+      const user = await this.endUsers.ensure(ctx.integratorId, ctx.userRef);
+      if (user.status === 'blocked') throw new UserBlockedError();
+    }
+
     // Platform-owned billing: if this is an end-user call with a rate, check the
     // wallet and cap the call duration so the provider auto-cuts when funds run out.
     let maxSeconds: number | undefined;
@@ -103,6 +119,37 @@ export class CallService {
 
   list(integratorId: string, limit: number, cursor?: { createdAt: string; id: string }): Promise<CallRow[]> {
     return this.repo.listByIntegrator(integratorId, limit, cursor);
+  }
+
+  /** Register an end-user (e.g. on a wallet top-up) so they appear in the admin console. */
+  ensureUser(integratorId: string, userRef: string): Promise<unknown> {
+    return this.endUsers.ensure(integratorId, userRef);
+  }
+
+  /**
+   * Block or unblock an end-user. Blocking cuts every still-open call immediately
+   * (the provider ends the leg); the balance is left untouched (frozen, not refunded).
+   */
+  async setUserBlocked(integratorId: string, userRef: string, blocked: boolean): Promise<{ status: string; cutCalls: string[] }> {
+    await this.endUsers.ensure(integratorId, userRef);
+    const updated = await this.endUsers.setStatus(integratorId, userRef, blocked ? 'blocked' : 'active');
+    const cutCalls: string[] = [];
+    if (blocked) {
+      const open = await this.repo.findOpenByUserRef(integratorId, userRef);
+      for (const call of open) {
+        try {
+          await this.adapter.endCall(call.providerSessionId);
+        } catch {
+          // Provider hangup is best-effort; we still mark the call ended locally.
+        }
+        await this.repo.applyEvent(this.adapter.provider, call.providerSessionId, {
+          status: 'failed',
+          endedAt: new Date(),
+        });
+        cutCalls.push(call.id);
+      }
+    }
+    return { status: updated?.status ?? (blocked ? 'blocked' : 'active'), cutCalls };
   }
 
   /** After a mid-call top-up, recompute the affordable duration and extend the user's active calls. */

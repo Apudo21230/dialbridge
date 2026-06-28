@@ -4,6 +4,7 @@ import { config, recordingStorage } from './config.js';
 import { S3RecordingStore } from './recording/recordingStore.js';
 import { CallService } from './calls/callService.js';
 import { CallRepository } from './calls/callRepository.js';
+import { EndUserRepository } from './users/endUserRepository.js';
 import { WalletRepository } from './billing/walletRepository.js';
 import { BillingService } from './billing/billingService.js';
 import { createWalletRouter } from './billing/walletRoutes.js';
@@ -38,7 +39,8 @@ export function createApp(deps: AppDeps = {}): Express {
   const billing = new BillingService(walletRepo);
   const recordingStore = recordingStorage ? new S3RecordingStore(recordingStorage) : undefined;
   const callRepo = new CallRepository(db);
-  const callService = new CallService(adapter, callRepo, billing, recordingStore);
+  const endUserRepo = new EndUserRepository(db);
+  const callService = new CallService(adapter, callRepo, billing, endUserRepo, recordingStore);
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);
@@ -67,7 +69,7 @@ export function createApp(deps: AppDeps = {}): Express {
   });
 
   // Admin console (login is open; the rest require an admin token).
-  app.use(createAdminRouter({ adminService, integratorService, integratorRepo, callRepo, audit }));
+  app.use(createAdminRouter({ adminService, integratorService, integratorRepo, callRepo, callService, endUserRepo, audit }));
   // Client-token minting — integrator's backend only (API key).
   app.use(createClientTokenRouter(requireApiKey));
   // Wallet top-up / balance — integrator's backend only (API key). Top-up extends active calls.

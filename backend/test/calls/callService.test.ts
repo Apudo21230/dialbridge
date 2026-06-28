@@ -7,12 +7,18 @@ import { WalletRepository } from '../../src/billing/walletRepository.js';
 import { BillingService } from '../../src/billing/billingService.js';
 import { MockTelephonyDriver } from '../../src/telephony/mockDriver.js';
 import { IntegratorRepository } from '../../src/integrators/integratorRepository.js';
+import { EndUserRepository } from '../../src/users/endUserRepository.js';
 
 const pool = createPool();
 const db = createDb(pool);
 
 function svc() {
-  return new CallService(new MockTelephonyDriver(), new CallRepository(db), new BillingService(new WalletRepository(db)));
+  return new CallService(
+    new MockTelephonyDriver(),
+    new CallRepository(db),
+    new BillingService(new WalletRepository(db)),
+    new EndUserRepository(db),
+  );
 }
 async function newIntegrator(name = 'svc-test'): Promise<string> {
   return (await new IntegratorRepository(db).create(name)).id;

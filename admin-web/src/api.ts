@@ -57,6 +57,14 @@ export interface Overview {
   revenue: number; // minor units (paise)
 }
 
+export interface EndUser {
+  userRef: string;
+  status: string; // active | blocked
+  balance: number; // paise
+  totalCalls: number;
+  lastCallAt: string | null;
+}
+
 export interface CallRecord {
   id: string;
   integratorName: string;
@@ -89,13 +97,29 @@ export const api = {
 
   overview: () => req<Overview>('/admin/overview'),
 
-  listCalls: (params: { status?: string; cursor?: string; limit?: number } = {}) => {
+  listCalls: (params: { status?: string; cursor?: string; limit?: number; integratorId?: string } = {}) => {
     const q = new URLSearchParams();
     if (params.status) q.set('status', params.status);
     if (params.cursor) q.set('cursor', params.cursor);
     if (params.limit) q.set('limit', String(params.limit));
+    if (params.integratorId) q.set('integratorId', params.integratorId);
     return req<{ calls: CallRecord[]; nextCursor: string | null }>(`/admin/calls?${q.toString()}`);
   },
+
+  listUsers: (integratorId: string) =>
+    req<{ users: EndUser[] }>(`/admin/integrators/${integratorId}/users`),
+
+  blockUser: (integratorId: string, userRef: string) =>
+    req<{ userRef: string; status: string; cutCalls: string[] }>(
+      `/admin/integrators/${integratorId}/users/${encodeURIComponent(userRef)}/block`,
+      { method: 'POST' },
+    ),
+
+  unblockUser: (integratorId: string, userRef: string) =>
+    req<{ userRef: string; status: string; cutCalls: string[] }>(
+      `/admin/integrators/${integratorId}/users/${encodeURIComponent(userRef)}/unblock`,
+      { method: 'POST' },
+    ),
 
   createIntegrator: (name: string) =>
     req<{ integratorId: string; apiKey: string; keyId: string }>('/admin/integrators', {

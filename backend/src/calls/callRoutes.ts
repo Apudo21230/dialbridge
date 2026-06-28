@@ -59,8 +59,13 @@ export function createCallRouter(service: CallService, requireCaller: RequestHan
         maxSeconds: call.maxSeconds,
       });
     } catch (e) {
-      if ((e as Error).message === 'insufficient balance') {
+      const msg = (e as Error).message;
+      if (msg === 'insufficient balance') {
         res.status(402).json({ error: 'insufficient balance' });
+        return;
+      }
+      if (msg === 'user blocked') {
+        res.status(403).json({ error: 'user blocked' });
         return;
       }
       throw e;

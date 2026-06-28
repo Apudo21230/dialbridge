@@ -14,7 +14,8 @@ export function createWalletRouter(wallets: WalletRepository, requireApiKey: Req
     }
     const wallet = await wallets.getOrCreate(req.integrator!.id, userRef.trim());
     const updated = await wallets.credit(wallet.id, amount);
-    // A top-up extends any of this user's active calls (more balance → more talk time).
+    // Register the user (so they show in the admin console) and extend any active calls.
+    await callService.ensureUser(req.integrator!.id, userRef.trim());
     const extendedCalls = await callService.extendActiveCallsForUser(req.integrator!.id, userRef.trim());
     res.status(200).json({
       userRef: updated.userRef,

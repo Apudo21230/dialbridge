@@ -1,14 +1,14 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import type { CallService } from './callService.js';
 
 function isE164(value: unknown): value is string {
   return typeof value === 'string' && /^\+[1-9]\d{6,14}$/.test(value);
 }
 
-export function createCallRouter(service: CallService): Router {
+export function createCallRouter(service: CallService, requireApiKey: RequestHandler): Router {
   const router = Router();
 
-  router.post('/calls', async (req, res) => {
+  router.post('/calls', requireApiKey, async (req, res) => {
     const { bookingId, creatorNumber, fanNumber, record } = req.body ?? {};
     if (typeof bookingId !== 'string' || !isE164(creatorNumber) || !isE164(fanNumber)) {
       res.status(400).json({ error: 'bookingId and E.164 creatorNumber/fanNumber are required' });

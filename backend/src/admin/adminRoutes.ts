@@ -3,6 +3,7 @@ import type { AdminService } from './adminService.js';
 import type { AuditRepository } from './auditRepository.js';
 import type { IntegratorService } from '../integrators/integratorService.js';
 import type { IntegratorRepository } from '../integrators/integratorRepository.js';
+import type { CallRepository } from '../calls/callRepository.js';
 import { requireAdmin } from '../auth/requireAdmin.js';
 
 interface IntegratorCreatedAt {
@@ -27,11 +28,12 @@ export interface AdminRouterDeps {
   adminService: AdminService;
   integratorService: IntegratorService;
   integratorRepo: IntegratorRepository;
+  callRepo: CallRepository;
   audit: AuditRepository;
 }
 
 export function createAdminRouter(deps: AdminRouterDeps): Router {
-  const { adminService, integratorService, integratorRepo, audit } = deps;
+  const { adminService, integratorService, integratorRepo, callRepo, audit } = deps;
   const router = Router();
 
   router.post('/admin/login', async (req, res) => {
@@ -141,6 +143,42 @@ export function createAdminRouter(deps: AdminRouterDeps): Router {
       metadata: { keyId: r.keyId, label },
     });
     res.status(201).json({ keyId: r.keyId, apiKey: r.apiKey, prefix: r.prefix, label });
+  });
+
+  // Platform-wide counters for the dashboard.
+  router.get('/admin/overview', requireAdmin, async (_req, res) => {
+    res.status(200).json(await callRepo.adminOverview());
+  });
+
+  // Every integrator's calls + recordings (real phone numbers are never stored — privacy by design).
+  router.get('/admin/calls', requireAdmin, async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
+    const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : undefined;
+    const cursor = typeof req.query.cursor === 'string' ? decodeCursor(req.query.cursor) : undefined;
+
+    const rows = await callRepo.listAllWithIntegrator(limit + 1, cursor, status);
+    const hasMore = rows.length > limit;
+    const page = rows.slice(0, limit);
+    const nextCursor = hasMore ? encodeCursor(page[page.length - 1]) : null;
+
+    res.status(200).json({
+      calls: page.map((c) => ({
+        id: c.id,
+        integratorName: c.integratorName,
+        userRef: c.userRef,
+        status: c.status,
+        provider: c.provider,
+        virtualNumber: c.virtualNumber,
+        billableSeconds: c.billableSeconds,
+        maxSeconds: c.maxSeconds,
+        ratePerMinute: c.ratePerMinute,
+        cost: c.cost,
+        recordingUrl: c.recordingUrl,
+        createdAt: c.createdAt,
+        endedAt: c.endedAt,
+      })),
+      nextCursor,
+    });
   });
 
   router.post('/admin/api-keys/:keyId/revoke', requireAdmin, async (req, res) => {

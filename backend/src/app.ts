@@ -37,7 +37,8 @@ export function createApp(deps: AppDeps = {}): Express {
   const walletRepo = new WalletRepository(db);
   const billing = new BillingService(walletRepo);
   const recordingStore = recordingStorage ? new S3RecordingStore(recordingStorage) : undefined;
-  const callService = new CallService(adapter, new CallRepository(db), billing, recordingStore);
+  const callRepo = new CallRepository(db);
+  const callService = new CallService(adapter, callRepo, billing, recordingStore);
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);
@@ -66,7 +67,7 @@ export function createApp(deps: AppDeps = {}): Express {
   });
 
   // Admin console (login is open; the rest require an admin token).
-  app.use(createAdminRouter({ adminService, integratorService, integratorRepo, audit }));
+  app.use(createAdminRouter({ adminService, integratorService, integratorRepo, callRepo, audit }));
   // Client-token minting — integrator's backend only (API key).
   app.use(createClientTokenRouter(requireApiKey));
   // Wallet top-up / balance — integrator's backend only (API key). Top-up extends active calls.

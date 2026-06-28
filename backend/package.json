@@ -24,6 +24,7 @@
     "drizzle-orm": "^0.45.2",
     "express": "^4.19.2",
     "express-rate-limit": "^8.5.2",
+    "ipaddr.js": "^2.4.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.22.0"
   },

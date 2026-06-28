@@ -2,8 +2,13 @@ import express, { type Express } from 'express';
 import { CallService } from './calls/callService.js';
 import { MockTelephonyDriver } from './telephony/mockDriver.js';
 import { createCallRouter } from './calls/callRoutes.js';
+import { createWebhookRouter } from './telephony/webhookRoutes.js';
+import type { TelephonyAdapter } from './telephony/types.js';
 
-export function createApp(service: CallService = new CallService(new MockTelephonyDriver())): Express {
+export function createApp(
+  adapter: TelephonyAdapter = new MockTelephonyDriver(),
+  service: CallService = new CallService(adapter),
+): Express {
   const app = express();
   app.use(express.json());
 
@@ -12,8 +17,8 @@ export function createApp(service: CallService = new CallService(new MockTelepho
   });
 
   app.use(createCallRouter(service));
+  app.use(createWebhookRouter(adapter, service));
 
-  // Expose for routers added in later tasks (e.g. webhook handler).
   app.locals.callService = service;
 
   return app;

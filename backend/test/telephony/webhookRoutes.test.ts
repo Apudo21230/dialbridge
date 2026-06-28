@@ -1,16 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
-import { CallService } from '../../src/calls/callService.js';
 import { MockTelephonyDriver } from '../../src/telephony/mockDriver.js';
+import type { CallService } from '../../src/calls/callService.js';
 
 describe('POST /telephony/webhook', () => {
   it('applies a completed event to an existing call (end-to-end)', async () => {
-    // Inject a shared adapter + service so the test can read back the
-    // provider session id the API does not expose.
     const adapter = new MockTelephonyDriver();
-    const service = new CallService(adapter);
-    const app = createApp(adapter, service);
+    const app = createApp({ adapter });
 
     const start = await request(app).post('/calls').send({
       bookingId: 'b1',
@@ -20,6 +17,7 @@ describe('POST /telephony/webhook', () => {
     });
     expect(start.status).toBe(201);
 
+    const service = app.locals.callService as CallService;
     const rec = service.getBySessionId(start.body.sessionId);
     expect(rec).toBeTruthy();
 

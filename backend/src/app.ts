@@ -1,4 +1,5 @@
 import express, { type Express } from 'express';
+import cors from 'cors';
 import { CallService } from './calls/callService.js';
 import { MockTelephonyDriver } from './telephony/mockDriver.js';
 import { createCallRouter } from './calls/callRoutes.js';
@@ -31,6 +32,9 @@ export function createApp(deps: AppDeps = {}): Express {
   const audit = new AuditRepository(db);
 
   const app = express();
+  // Bearer-token API (no cookies) — CORS open is acceptable; restrict via a
+  // reverse proxy / allowlist in production.
+  app.use(cors());
   app.use(express.json());
 
   app.get('/health', (_req, res) => {

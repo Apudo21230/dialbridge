@@ -69,8 +69,8 @@ export function createApp(deps: AppDeps = {}): Express {
   app.use(createAdminRouter({ adminService, integratorService, integratorRepo, audit }));
   // Client-token minting — integrator's backend only (API key).
   app.use(createClientTokenRouter(requireApiKey));
-  // Wallet top-up / balance — integrator's backend only (API key).
-  app.use(createWalletRouter(walletRepo, requireApiKey));
+  // Wallet top-up / balance — integrator's backend only (API key). Top-up extends active calls.
+  app.use(createWalletRouter(walletRepo, requireApiKey, callService));
   // Masked-call API — accepts an API key OR a client token (active integrator).
   app.use(createCallRouter(callService, requireCaller));
   // Operator-facing webhook — no API key.

@@ -16,6 +16,14 @@ export class BillingService {
     return { maxSeconds };
   }
 
+  /** How many seconds the current balance affords (0 if none). Used to extend an active call. */
+  async affordableSeconds(integratorId: string, userRef: string, ratePerMinute: number): Promise<number> {
+    if (!Number.isFinite(ratePerMinute) || ratePerMinute <= 0) return 0;
+    const wallet = await this.wallets.find(integratorId, userRef);
+    if (!wallet) return 0;
+    return Math.max(0, Math.floor((wallet.balance / ratePerMinute) * 60));
+  }
+
   /** Deduct the actual cost (whole minutes) on call end, capped at the balance. Returns the cost charged. */
   async finalize(integratorId: string, userRef: string, ratePerMinute: number, billableSeconds: number, callId: string): Promise<number> {
     const wallet = await this.wallets.find(integratorId, userRef);

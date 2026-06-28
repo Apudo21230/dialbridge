@@ -12,7 +12,7 @@ describe('MockTelephonyDriver', () => {
       record: true,
     });
     expect(session.providerSessionId).toBeTruthy();
-    expect(session.virtualNumber).toBe('+910000000000');
+    expect(session.virtualNumber).toMatch(/^\+9180\d{8}$/);
     expect(session.status).toBe('ringing');
   });
 

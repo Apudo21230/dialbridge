@@ -19,6 +19,6 @@ enum DemoConfig {
 @main
 struct FanCallDemoApp: App {
     var body: some Scene {
-        WindowGroup { ContentView() }
+        WindowGroup { CreatorsListView() }
     }
 }

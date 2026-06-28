@@ -22,6 +22,7 @@ import { AdminRepository } from './admin/adminRepository.js';
 import { AdminService } from './admin/adminService.js';
 import { AuditRepository } from './admin/auditRepository.js';
 import { createAdminRouter } from './admin/adminRoutes.js';
+import { createDemoRouter } from './demo/demoRoutes.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { apiLimiter, authLimiter } from './middleware/rateLimit.js';
@@ -78,6 +79,10 @@ export function createApp(deps: AppDeps = {}): Express {
   app.use(createCallRouter(callService, requireCaller));
   // Operator-facing webhook — no API key.
   app.use(createWebhookRouter(adapter, callService));
+  // Demo helpers for the example apps — never mounted in production.
+  if (process.env.NODE_ENV !== 'production') {
+    app.use(createDemoRouter(requireCaller));
+  }
 
   app.locals.callService = callService;
   app.locals.db = db;

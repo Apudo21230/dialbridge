@@ -21,6 +21,14 @@ function isEventType(value: unknown): value is NormalizedCallEventType {
 export class MockTelephonyDriver implements TelephonyAdapter {
   readonly provider = 'mock';
 
+  // Stand-in for a rented masking-number pool (the real ones come from Tata DIGO).
+  private static readonly virtualNumbers = [
+    '+918071961201',
+    '+918071961202',
+    '+918071961203',
+    '+918071961204',
+  ];
+
   constructor(private readonly webhookSecret: string = '') {}
 
   /** HMAC-SHA256 of the raw body, compared in constant time. Rejects when unconfigured. */
@@ -33,9 +41,10 @@ export class MockTelephonyDriver implements TelephonyAdapter {
   }
 
   async startMaskedCall(_params: StartMaskedCallParams): Promise<MaskedCallSession> {
+    const pool = MockTelephonyDriver.virtualNumbers;
     return {
       providerSessionId: randomUUID(),
-      virtualNumber: '+910000000000',
+      virtualNumber: pool[Math.floor(Math.random() * pool.length)],
       status: 'ringing',
     };
   }

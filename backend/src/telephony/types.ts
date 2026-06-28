@@ -37,6 +37,8 @@ export interface TelephonyAdapter {
   readonly provider: string;
   startMaskedCall(params: StartMaskedCallParams): Promise<MaskedCallSession>;
   endCall(providerSessionId: string): Promise<void>;
+  /** Verify the webhook is genuinely from the provider (signature over the raw body). */
+  verifyWebhook(rawBody: Buffer, signature: string | undefined): boolean;
   parseWebhook(payload: unknown): NormalizedCallEvent;
 }
 

@@ -1,4 +1,4 @@
-import { eq, and, or, lt, desc } from 'drizzle-orm';
+import { eq, and, or, lt, ne, desc } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { calls, type CallRow } from '../db/schema.js';
 
@@ -45,7 +45,8 @@ export class CallRepository {
     return row;
   }
 
-  async applyEvent(providerSessionId: string, u: CallEventUpdate): Promise<CallRow | undefined> {
+  /** Apply a provider event. Scoped to (provider, providerSessionId); never downgrades a terminal call. */
+  async applyEvent(provider: string, providerSessionId: string, u: CallEventUpdate): Promise<CallRow | undefined> {
     const set: Partial<typeof calls.$inferInsert> = { status: u.status };
     if (typeof u.billableSeconds === 'number') set.billableSeconds = u.billableSeconds;
     if (u.recordingUrl) set.recordingUrl = u.recordingUrl;
@@ -53,7 +54,14 @@ export class CallRepository {
     const [row] = await this.db
       .update(calls)
       .set(set)
-      .where(eq(calls.providerSessionId, providerSessionId))
+      .where(
+        and(
+          eq(calls.provider, provider),
+          eq(calls.providerSessionId, providerSessionId),
+          ne(calls.status, 'completed'),
+          ne(calls.status, 'failed'),
+        ),
+      )
       .returning();
     return row;
   }

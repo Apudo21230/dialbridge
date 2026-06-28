@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { createHmac } from 'node:crypto';
 import { MockTelephonyDriver } from '../../src/telephony/mockDriver.js';
 
 describe('MockTelephonyDriver', () => {
@@ -36,5 +37,16 @@ describe('MockTelephonyDriver', () => {
   it('throws on an invalid webhook payload', () => {
     const driver = new MockTelephonyDriver();
     expect(() => driver.parseWebhook({ type: 'completed' })).toThrow('invalid webhook payload');
+  });
+
+  it('verifies a webhook HMAC signature (and rejects bad/absent/unconfigured)', () => {
+    const secret = 'webhook-secret-1234567890';
+    const driver = new MockTelephonyDriver(secret);
+    const body = Buffer.from('{"a":1}');
+    const sig = createHmac('sha256', secret).update(body).digest('hex');
+    expect(driver.verifyWebhook(body, sig)).toBe(true);
+    expect(driver.verifyWebhook(body, 'deadbeef')).toBe(false);
+    expect(driver.verifyWebhook(body, undefined)).toBe(false);
+    expect(new MockTelephonyDriver().verifyWebhook(body, sig)).toBe(false); // no secret configured
   });
 });

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "calls_provider_session_uniq" ON "calls" USING btree ("provider","provider_session_id");

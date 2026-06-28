@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, jsonb, integer } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, jsonb, integer, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /** A business that integrates Dialbridge (the API/SDK consumer). */
 export const integrators = pgTable('integrators', {
@@ -53,7 +53,9 @@ export const calls = pgTable('calls', {
   recordingUrl: text('recording_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
-});
+}, (t) => ({
+  providerSessionUniq: uniqueIndex('calls_provider_session_uniq').on(t.provider, t.providerSessionId),
+}));
 
 export type IntegratorRow = typeof integrators.$inferSelect;
 export type NewIntegratorRow = typeof integrators.$inferInsert;

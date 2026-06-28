@@ -14,6 +14,16 @@ const EVENT_TO_STATUS: Record<NormalizedCallEventType, string> = {
   failed: 'failed',
 };
 
+/** Only store provider-supplied recording URLs that are well-formed https. */
+function safeRecordingUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).protocol === 'https:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class CallService {
   constructor(
     private readonly adapter: TelephonyAdapter,
@@ -34,10 +44,10 @@ export class CallService {
 
   async handleEvent(event: NormalizedCallEvent): Promise<CallRow | undefined> {
     const terminal = event.type === 'completed' || event.type === 'failed';
-    return this.repo.applyEvent(event.providerSessionId, {
+    return this.repo.applyEvent(this.adapter.provider, event.providerSessionId, {
       status: EVENT_TO_STATUS[event.type],
       billableSeconds: event.billableSeconds,
-      recordingUrl: event.recordingUrl,
+      recordingUrl: safeRecordingUrl(event.recordingUrl),
       endedAt: terminal ? new Date(event.at) : undefined,
     });
   }

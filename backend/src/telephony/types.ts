@@ -16,6 +16,7 @@ export interface StartMaskedCallParams {
   creatorNumber: string; // E.164
   fanNumber: string; // E.164
   record: boolean;
+  maxSeconds?: number; // provider auto-cuts the call at this duration (prepaid balance)
 }
 
 export interface MaskedCallSession {

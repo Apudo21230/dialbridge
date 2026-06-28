@@ -2,7 +2,7 @@ import type { IntegratorRepository } from './integratorRepository.js';
 import { generateApiKey, hashApiKey } from '../auth/apiKey.js';
 import { verifyClientToken } from '../auth/clientToken.js';
 
-export type AuthResult = { integratorId: string } | { suspended: true } | undefined;
+export type AuthResult = { integratorId: string; userRef?: string } | { suspended: true } | undefined;
 
 export class IntegratorService {
   constructor(private readonly repo: IntegratorRepository) {}
@@ -37,6 +37,6 @@ export class IntegratorService {
     const integrator = await this.repo.findById(claims.integratorId);
     if (!integrator) return undefined;
     if (integrator.status !== 'active') return { suspended: true };
-    return { integratorId: integrator.id };
+    return { integratorId: integrator.id, userRef: claims.userRef };
   }
 }

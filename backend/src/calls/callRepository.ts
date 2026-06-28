@@ -9,6 +9,9 @@ export interface NewCall {
   providerSessionId: string;
   virtualNumber?: string;
   status: string;
+  userRef?: string;
+  ratePerMinute?: number;
+  maxSeconds?: number;
 }
 
 export interface CallEventUpdate {
@@ -31,9 +34,16 @@ export class CallRepository {
         providerSessionId: c.providerSessionId,
         virtualNumber: c.virtualNumber,
         status: c.status,
+        userRef: c.userRef,
+        ratePerMinute: c.ratePerMinute,
+        maxSeconds: c.maxSeconds,
       })
       .returning();
     return row;
+  }
+
+  async setCost(id: string, cost: number): Promise<void> {
+    await this.db.update(calls).set({ cost }).where(eq(calls.id, id));
   }
 
   async findByIdForIntegrator(id: string, integratorId: string): Promise<CallRow | undefined> {

@@ -27,6 +27,7 @@ export function createRequireCaller(service: IntegratorService) {
       return;
     }
     req.integrator = { id: result.integratorId };
+    req.userRef = result.userRef;
     next();
   };
 }

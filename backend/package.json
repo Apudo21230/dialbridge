@@ -12,8 +12,8 @@
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "test": "DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest run",
-    "test:watch": "DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest",
+    "test": "NODE_ENV=test DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest run",
+    "test:watch": "NODE_ENV=test DATABASE_URL=postgresql://apple@localhost:5432/dialbridge_test vitest",
     "db:seed-admin": "tsx src/db/seedAdmin.ts"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.22.0"
   },

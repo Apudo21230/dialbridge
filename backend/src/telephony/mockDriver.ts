@@ -19,6 +19,8 @@ function isEventType(value: unknown): value is NormalizedCallEventType {
 }
 
 export class MockTelephonyDriver implements TelephonyAdapter {
+  readonly provider = 'mock';
+
   async startMaskedCall(_params: StartMaskedCallParams): Promise<MaskedCallSession> {
     return {
       providerSessionId: randomUUID(),

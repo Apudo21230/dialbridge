@@ -1,51 +1,52 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
+import { sql, eq } from 'drizzle-orm';
 import { createApp } from '../../src/app.js';
-import { MockTelephonyDriver } from '../../src/telephony/mockDriver.js';
 import { createPool, createDb } from '../../src/db/client.js';
 import { IntegratorService } from '../../src/integrators/integratorService.js';
 import { IntegratorRepository } from '../../src/integrators/integratorRepository.js';
-import type { CallService } from '../../src/calls/callService.js';
+import { calls } from '../../src/db/schema.js';
 
 const pool = createPool();
 const db = createDb(pool);
-let apiKey: string;
+const app = createApp({ db });
 
-beforeAll(async () => {
-  apiKey = (await new IntegratorService(new IntegratorRepository(db)).onboard('webhook-test')).apiKey;
-});
+async function key(): Promise<string> {
+  return (await new IntegratorService(new IntegratorRepository(db)).onboard('wh')).apiKey;
+}
+
+beforeEach(async () => { await db.execute(sql`truncate table calls, api_keys, integrators restart identity cascade`); });
 afterAll(async () => { await pool.end(); });
 
 describe('POST /telephony/webhook', () => {
-  it('applies a completed event to an existing call (end-to-end)', async () => {
-    const adapter = new MockTelephonyDriver();
-    const app = createApp({ adapter, db });
-
+  it('applies a completed event to a persisted call (end-to-end)', async () => {
+    const apiKey = await key();
     const start = await request(app).post('/calls').set('Authorization', `Bearer ${apiKey}`).send({
       bookingId: 'b1',
       creatorNumber: '+919800000001',
       fanNumber: '+919800000002',
       record: true,
     });
-    expect(start.status).toBe(201);
-
-    const service = app.locals.callService as CallService;
-    const rec = service.getBySessionId(start.body.sessionId);
-    expect(rec).toBeTruthy();
+    const id = start.body.sessionId as string;
+    const [row] = await db.select().from(calls).where(eq(calls.id, id)).limit(1);
 
     const applied = await request(app).post('/telephony/webhook').send({
-      providerSessionId: rec!.providerSessionId,
+      providerSessionId: row.providerSessionId,
       type: 'completed',
       billableSeconds: 60,
       at: '2026-06-28T10:00:00.000Z',
     });
     expect(applied.status).toBe(200);
     expect(applied.body.applied).toBe(true);
+
+    const got = await request(app).get(`/calls/${id}`).set('Authorization', `Bearer ${apiKey}`);
+    expect(got.body.status).toBe('completed');
+    expect(got.body.billableSeconds).toBe(60);
   });
 
   it('reports applied=false for an unknown session', async () => {
-    const res = await request(createApp({ db })).post('/telephony/webhook').send({
-      providerSessionId: 'unknown-provider-id',
+    const res = await request(app).post('/telephony/webhook').send({
+      providerSessionId: 'unknown',
       type: 'completed',
       at: '2026-06-28T10:00:00.000Z',
     });
@@ -54,9 +55,7 @@ describe('POST /telephony/webhook', () => {
   });
 
   it('returns 400 on a malformed payload', async () => {
-    const res = await request(createApp({ db }))
-      .post('/telephony/webhook')
-      .send({ type: 'completed' }); // missing providerSessionId
+    const res = await request(app).post('/telephony/webhook').send({ type: 'completed' });
     expect(res.status).toBe(400);
     expect(res.body.error).toBeTruthy();
   });

@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
 import { CallService } from './calls/callService.js';
+import { CallRepository } from './calls/callRepository.js';
 import { MockTelephonyDriver } from './telephony/mockDriver.js';
 import { createCallRouter } from './calls/callRoutes.js';
 import { createWebhookRouter } from './telephony/webhookRoutes.js';
@@ -25,7 +26,7 @@ export function createApp(deps: AppDeps = {}): Express {
   const db = deps.db ?? createDb(createPool());
   const adapter = deps.adapter ?? new MockTelephonyDriver();
 
-  const callService = new CallService(adapter);
+  const callService = new CallService(adapter, new CallRepository(db));
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);

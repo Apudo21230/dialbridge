@@ -1,23 +1,13 @@
-import { randomUUID } from 'node:crypto';
 import type {
-  CallStatus,
+  TelephonyAdapter,
+  StartMaskedCallParams,
   NormalizedCallEvent,
   NormalizedCallEventType,
-  StartMaskedCallParams,
-  TelephonyAdapter,
 } from '../telephony/types.js';
+import type { CallRepository } from './callRepository.js';
+import type { CallRow } from '../db/schema.js';
 
-export interface CallRecord {
-  sessionId: string;
-  bookingId: string;
-  providerSessionId: string;
-  virtualNumber: string;
-  status: CallStatus;
-  billableSeconds: number;
-  recordingUrl?: string;
-}
-
-const EVENT_TO_STATUS: Record<NormalizedCallEventType, CallStatus> = {
+const EVENT_TO_STATUS: Record<NormalizedCallEventType, string> = {
   ringing: 'ringing',
   answered: 'in_progress',
   completed: 'completed',
@@ -25,41 +15,38 @@ const EVENT_TO_STATUS: Record<NormalizedCallEventType, CallStatus> = {
 };
 
 export class CallService {
-  private readonly bySessionId = new Map<string, CallRecord>();
-  private readonly byProviderId = new Map<string, CallRecord>();
+  constructor(
+    private readonly adapter: TelephonyAdapter,
+    private readonly repo: CallRepository,
+  ) {}
 
-  constructor(private readonly adapter: TelephonyAdapter) {}
-
-  async startCall(params: StartMaskedCallParams): Promise<CallRecord> {
+  async startCall(params: StartMaskedCallParams, integratorId: string): Promise<CallRow> {
     const session = await this.adapter.startMaskedCall(params);
-    const record: CallRecord = {
-      sessionId: randomUUID(),
+    return this.repo.create({
+      integratorId,
       bookingId: params.bookingId,
+      provider: this.adapter.provider,
       providerSessionId: session.providerSessionId,
       virtualNumber: session.virtualNumber,
       status: session.status,
-      billableSeconds: 0,
-    };
-    this.bySessionId.set(record.sessionId, record);
-    this.byProviderId.set(record.providerSessionId, record);
-    return record;
+    });
   }
 
-  handleEvent(event: NormalizedCallEvent): CallRecord | undefined {
-    const record = this.byProviderId.get(event.providerSessionId);
-    if (!record) return undefined;
-
-    record.status = EVENT_TO_STATUS[event.type];
-    if (typeof event.billableSeconds === 'number') {
-      record.billableSeconds = event.billableSeconds;
-    }
-    if (event.recordingUrl) {
-      record.recordingUrl = event.recordingUrl;
-    }
-    return record;
+  async handleEvent(event: NormalizedCallEvent): Promise<CallRow | undefined> {
+    const terminal = event.type === 'completed' || event.type === 'failed';
+    return this.repo.applyEvent(event.providerSessionId, {
+      status: EVENT_TO_STATUS[event.type],
+      billableSeconds: event.billableSeconds,
+      recordingUrl: event.recordingUrl,
+      endedAt: terminal ? new Date(event.at) : undefined,
+    });
   }
 
-  getBySessionId(sessionId: string): CallRecord | undefined {
-    return this.bySessionId.get(sessionId);
+  getForIntegrator(id: string, integratorId: string): Promise<CallRow | undefined> {
+    return this.repo.findByIdForIntegrator(id, integratorId);
+  }
+
+  list(integratorId: string, limit: number, cursor?: { createdAt: string; id: string }): Promise<CallRow[]> {
+    return this.repo.listByIntegrator(integratorId, limit, cursor);
   }
 }

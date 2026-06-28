@@ -12,7 +12,7 @@ export type NormalizedCallEventType =
   | 'failed';
 
 export interface StartMaskedCallParams {
-  bookingId: string;
+  bookingId?: string; // optional integrator reference
   creatorNumber: string; // E.164
   fanNumber: string; // E.164
   record: boolean;
@@ -33,6 +33,8 @@ export interface NormalizedCallEvent {
 }
 
 export interface TelephonyAdapter {
+  /** Provider identifier recorded on each call (e.g. 'mock', 'tata-digo'). */
+  readonly provider: string;
   startMaskedCall(params: StartMaskedCallParams): Promise<MaskedCallSession>;
   endCall(providerSessionId: string): Promise<void>;
   parseWebhook(payload: unknown): NormalizedCallEvent;

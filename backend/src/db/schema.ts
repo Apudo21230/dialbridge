@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, jsonb, integer } from 'drizzle-orm/pg-core';
 
 /** A business that integrates Dialbridge (the API/SDK consumer). */
 export const integrators = pgTable('integrators', {
@@ -40,8 +40,24 @@ export const auditLogs = pgTable('audit_logs', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** A masked-call session. Real numbers are NOT persisted (privacy) — only the virtual number + provider session. */
+export const calls = pgTable('calls', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  integratorId: uuid('integrator_id').notNull().references(() => integrators.id),
+  bookingId: varchar('booking_id', { length: 128 }),
+  provider: varchar('provider', { length: 40 }).notNull().default('mock'),
+  providerSessionId: varchar('provider_session_id', { length: 128 }).notNull(),
+  virtualNumber: varchar('virtual_number', { length: 20 }),
+  status: varchar('status', { length: 20 }).notNull().default('created'),
+  billableSeconds: integer('billable_seconds').notNull().default(0),
+  recordingUrl: text('recording_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+});
+
 export type IntegratorRow = typeof integrators.$inferSelect;
 export type NewIntegratorRow = typeof integrators.$inferInsert;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type AdminUserRow = typeof adminUsers.$inferSelect;
 export type AuditLogRow = typeof auditLogs.$inferSelect;
+export type CallRow = typeof calls.$inferSelect;

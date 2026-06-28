@@ -36,16 +36,35 @@ export function createCallRouter(service: CallService, requireCaller: RequestHan
   const router = Router();
 
   router.post('/calls', requireCaller, async (req, res) => {
-    const { bookingId, creatorNumber, fanNumber, record } = req.body ?? {};
+    const { bookingId, creatorNumber, fanNumber, record, ratePerMinute, userRef } = req.body ?? {};
     if ((bookingId !== undefined && typeof bookingId !== 'string') || !isE164(creatorNumber) || !isE164(fanNumber)) {
       res.status(400).json({ error: 'E.164 creatorNumber/fanNumber required (bookingId optional string)' });
       return;
     }
-    const call = await service.startCall(
-      { bookingId, creatorNumber, fanNumber, record: Boolean(record) },
-      req.integrator!.id,
-    );
-    res.status(201).json({ sessionId: call.id, virtualNumber: call.virtualNumber, status: call.status });
+    if (ratePerMinute !== undefined && (!Number.isInteger(ratePerMinute) || ratePerMinute <= 0)) {
+      res.status(400).json({ error: 'ratePerMinute must be a positive integer (minor units)' });
+      return;
+    }
+    const ctx = {
+      integratorId: req.integrator!.id,
+      userRef: req.userRef ?? (typeof userRef === 'string' ? userRef : undefined),
+      ratePerMinute: typeof ratePerMinute === 'number' ? ratePerMinute : undefined,
+    };
+    try {
+      const call = await service.startCall({ bookingId, creatorNumber, fanNumber, record: Boolean(record) }, ctx);
+      res.status(201).json({
+        sessionId: call.id,
+        virtualNumber: call.virtualNumber,
+        status: call.status,
+        maxSeconds: call.maxSeconds,
+      });
+    } catch (e) {
+      if ((e as Error).message === 'insufficient balance') {
+        res.status(402).json({ error: 'insufficient balance' });
+        return;
+      }
+      throw e;
+    }
   });
 
   router.get('/calls/:id', requireCaller, async (req, res) => {

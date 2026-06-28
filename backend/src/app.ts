@@ -3,6 +3,9 @@ import cors from 'cors';
 import { config } from './config.js';
 import { CallService } from './calls/callService.js';
 import { CallRepository } from './calls/callRepository.js';
+import { WalletRepository } from './billing/walletRepository.js';
+import { BillingService } from './billing/billingService.js';
+import { createWalletRouter } from './billing/walletRoutes.js';
 import { MockTelephonyDriver } from './telephony/mockDriver.js';
 import { createCallRouter } from './calls/callRoutes.js';
 import { createWebhookRouter } from './telephony/webhookRoutes.js';
@@ -30,7 +33,9 @@ export function createApp(deps: AppDeps = {}): Express {
   const db = deps.db ?? createDb(createPool());
   const adapter = deps.adapter ?? new MockTelephonyDriver(config.webhookSecret);
 
-  const callService = new CallService(adapter, new CallRepository(db));
+  const walletRepo = new WalletRepository(db);
+  const billing = new BillingService(walletRepo);
+  const callService = new CallService(adapter, new CallRepository(db), billing);
   const integratorRepo = new IntegratorRepository(db);
   const integratorService = new IntegratorService(integratorRepo);
   const requireApiKey = createRequireApiKey(integratorService);
@@ -62,6 +67,8 @@ export function createApp(deps: AppDeps = {}): Express {
   app.use(createAdminRouter({ adminService, integratorService, integratorRepo, audit }));
   // Client-token minting — integrator's backend only (API key).
   app.use(createClientTokenRouter(requireApiKey));
+  // Wallet top-up / balance — integrator's backend only (API key).
+  app.use(createWalletRouter(walletRepo, requireApiKey));
   // Masked-call API — accepts an API key OR a client token (active integrator).
   app.use(createCallRouter(callService, requireCaller));
   // Operator-facing webhook — no API key.

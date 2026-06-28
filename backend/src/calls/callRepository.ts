@@ -46,6 +46,10 @@ export class CallRepository {
     await this.db.update(calls).set({ cost }).where(eq(calls.id, id));
   }
 
+  async setRecordingUrl(id: string, recordingUrl: string): Promise<void> {
+    await this.db.update(calls).set({ recordingUrl }).where(eq(calls.id, id));
+  }
+
   async findByIdForIntegrator(id: string, integratorId: string): Promise<CallRow | undefined> {
     const [row] = await this.db
       .select()

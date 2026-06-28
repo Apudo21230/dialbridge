@@ -62,6 +62,21 @@ export const calls = pgTable('calls', {
   providerSessionUniq: uniqueIndex('calls_provider_session_uniq').on(t.provider, t.providerSessionId),
 }));
 
+/**
+ * An integrator's end-user (e.g. a fan), keyed by (integrator, userRef).
+ * Lets us block an abusive user platform-side: a blocked user can't start calls
+ * and their active calls are cut, regardless of wallet balance.
+ */
+export const endUsers = pgTable('end_users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  integratorId: uuid('integrator_id').notNull().references(() => integrators.id),
+  userRef: varchar('user_ref', { length: 128 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // active | blocked
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  endUserUniq: uniqueIndex('end_users_integrator_user_uniq').on(t.integratorId, t.userRef),
+}));
+
 /** An end-user's prepaid balance, keyed by (integrator, userRef). Money in minor units. */
 export const wallets = pgTable('wallets', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -90,5 +105,6 @@ export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type AdminUserRow = typeof adminUsers.$inferSelect;
 export type AuditLogRow = typeof auditLogs.$inferSelect;
 export type CallRow = typeof calls.$inferSelect;
+export type EndUserRow = typeof endUsers.$inferSelect;
 export type WalletRow = typeof wallets.$inferSelect;
 export type WalletTransactionRow = typeof walletTransactions.$inferSelect;

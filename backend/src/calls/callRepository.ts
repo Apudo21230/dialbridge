@@ -82,6 +82,20 @@ export class CallRepository {
     await this.db.update(calls).set({ maxSeconds }).where(eq(calls.id, id));
   }
 
+  /** Every still-open call for a user (any rate) — used to cut calls when the user is blocked. */
+  async findOpenByUserRef(integratorId: string, userRef: string): Promise<CallRow[]> {
+    return this.db
+      .select()
+      .from(calls)
+      .where(
+        and(
+          eq(calls.integratorId, integratorId),
+          eq(calls.userRef, userRef),
+          inArray(calls.status, ['created', 'ringing', 'in_progress']),
+        ),
+      );
+  }
+
   async findByIdForIntegrator(id: string, integratorId: string): Promise<CallRow | undefined> {
     const [row] = await this.db
       .select()
@@ -135,9 +149,11 @@ export class CallRepository {
     limit: number,
     cursor?: { createdAt: string; id: string },
     status?: string,
+    integratorId?: string,
   ): Promise<AdminCallRow[]> {
     const conds = [];
     if (status) conds.push(eq(calls.status, status));
+    if (integratorId) conds.push(eq(calls.integratorId, integratorId));
     if (cursor) {
       const c = new Date(cursor.createdAt);
       conds.push(or(lt(calls.createdAt, c), and(eq(calls.createdAt, c), lt(calls.id, cursor.id)))!);

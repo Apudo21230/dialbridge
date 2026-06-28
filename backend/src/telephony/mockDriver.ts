@@ -40,6 +40,10 @@ export class MockTelephonyDriver implements TelephonyAdapter {
     };
   }
 
+  async extendCall(_providerSessionId: string, _maxSeconds: number): Promise<void> {
+    // No-op for the mock; the real provider updates the active call's max duration.
+  }
+
   async endCall(_providerSessionId: string): Promise<void> {
     // No-op for the mock.
   }

@@ -104,4 +104,18 @@ export class CallService {
   list(integratorId: string, limit: number, cursor?: { createdAt: string; id: string }): Promise<CallRow[]> {
     return this.repo.listByIntegrator(integratorId, limit, cursor);
   }
+
+  /** After a mid-call top-up, recompute the affordable duration and extend the user's active calls. */
+  async extendActiveCallsForUser(integratorId: string, userRef: string): Promise<{ callId: string; maxSeconds: number }[]> {
+    const active = await this.repo.findActiveByUserRef(integratorId, userRef);
+    const extended: { callId: string; maxSeconds: number }[] = [];
+    for (const call of active) {
+      if (!call.ratePerMinute) continue;
+      const maxSeconds = await this.billing.affordableSeconds(integratorId, userRef, call.ratePerMinute);
+      await this.adapter.extendCall(call.providerSessionId, maxSeconds);
+      await this.repo.updateMaxSeconds(call.id, maxSeconds);
+      extended.push({ callId: call.id, maxSeconds });
+    }
+    return extended;
+  }
 }

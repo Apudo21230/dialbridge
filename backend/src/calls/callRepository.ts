@@ -1,4 +1,4 @@
-import { eq, and, or, lt, ne, desc } from 'drizzle-orm';
+import { eq, and, or, lt, ne, desc, inArray, isNotNull } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { calls, type CallRow } from '../db/schema.js';
 
@@ -48,6 +48,25 @@ export class CallRepository {
 
   async setRecordingUrl(id: string, recordingUrl: string): Promise<void> {
     await this.db.update(calls).set({ recordingUrl }).where(eq(calls.id, id));
+  }
+
+  /** Active (ringing/in_progress), billed calls for a given end-user. */
+  async findActiveByUserRef(integratorId: string, userRef: string): Promise<CallRow[]> {
+    return this.db
+      .select()
+      .from(calls)
+      .where(
+        and(
+          eq(calls.integratorId, integratorId),
+          eq(calls.userRef, userRef),
+          inArray(calls.status, ['ringing', 'in_progress']),
+          isNotNull(calls.ratePerMinute),
+        ),
+      );
+  }
+
+  async updateMaxSeconds(id: string, maxSeconds: number): Promise<void> {
+    await this.db.update(calls).set({ maxSeconds }).where(eq(calls.id, id));
   }
 
   async findByIdForIntegrator(id: string, integratorId: string): Promise<CallRow | undefined> {

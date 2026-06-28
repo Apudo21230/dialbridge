@@ -37,6 +37,8 @@ export interface TelephonyAdapter {
   /** Provider identifier recorded on each call (e.g. 'mock', 'tata-digo'). */
   readonly provider: string;
   startMaskedCall(params: StartMaskedCallParams): Promise<MaskedCallSession>;
+  /** Extend an active call's max duration (e.g. after a mid-call wallet top-up). */
+  extendCall(providerSessionId: string, maxSeconds: number): Promise<void>;
   endCall(providerSessionId: string): Promise<void>;
   /** Verify the webhook is genuinely from the provider (signature over the raw body). */
   verifyWebhook(rawBody: Buffer, signature: string | undefined): boolean;

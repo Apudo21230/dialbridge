@@ -1,8 +1,9 @@
 import { Router, type RequestHandler } from 'express';
 import type { WalletRepository } from './walletRepository.js';
+import type { CallService } from '../calls/callService.js';
 
 /** Wallet management — integrator backend only (API key). Money in minor units (e.g. paise). */
-export function createWalletRouter(wallets: WalletRepository, requireApiKey: RequestHandler): Router {
+export function createWalletRouter(wallets: WalletRepository, requireApiKey: RequestHandler, callService: CallService): Router {
   const router = Router();
 
   router.post('/wallets/topup', requireApiKey, async (req, res) => {
@@ -13,7 +14,14 @@ export function createWalletRouter(wallets: WalletRepository, requireApiKey: Req
     }
     const wallet = await wallets.getOrCreate(req.integrator!.id, userRef.trim());
     const updated = await wallets.credit(wallet.id, amount);
-    res.status(200).json({ userRef: updated.userRef, balance: updated.balance, currency: updated.currency });
+    // A top-up extends any of this user's active calls (more balance → more talk time).
+    const extendedCalls = await callService.extendActiveCallsForUser(req.integrator!.id, userRef.trim());
+    res.status(200).json({
+      userRef: updated.userRef,
+      balance: updated.balance,
+      currency: updated.currency,
+      extendedCalls,
+    });
   });
 
   router.get('/wallets/:userRef', requireApiKey, async (req, res) => {

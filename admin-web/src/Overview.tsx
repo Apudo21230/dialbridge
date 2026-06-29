@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api, type Overview as OverviewData, type CallRecord } from './api';
 import { StatusBadge, Waveform, money, duration, when } from './ui';
+import { CallDetail } from './CallDetail';
 
 export function Overview({ onOpenCalls }: { onOpenCalls: () => void }) {
   const [data, setData] = useState<OverviewData | null>(null);
   const [recent, setRecent] = useState<CallRecord[]>([]);
   const [error, setError] = useState('');
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -74,7 +76,7 @@ export function Overview({ onOpenCalls }: { onOpenCalls: () => void }) {
               </thead>
               <tbody>
                 {recent.map((c) => (
-                  <tr key={c.id}>
+                  <tr key={c.id} className="is-click" onClick={() => setOpenId(c.id)}>
                     <td>{c.integratorName}</td>
                     <td className="mono muted">{c.userRef ?? '—'}</td>
                     <td><StatusBadge status={c.status} /></td>
@@ -88,6 +90,8 @@ export function Overview({ onOpenCalls }: { onOpenCalls: () => void }) {
           )}
         </div>
       </div>
+
+      {openId && <CallDetail id={openId} onClose={() => setOpenId(null)} />}
     </>
   );
 }

@@ -7,6 +7,7 @@ import { WalletRepository } from '../../src/billing/walletRepository.js';
 import { BillingService } from '../../src/billing/billingService.js';
 import { MockTelephonyDriver } from '../../src/telephony/mockDriver.js';
 import { IntegratorRepository } from '../../src/integrators/integratorRepository.js';
+import { EndUserRepository } from '../../src/users/endUserRepository.js';
 import type { RecordingStore } from '../../src/recording/recordingStore.js';
 
 const pool = createPool();
@@ -28,7 +29,7 @@ afterAll(async () => { await pool.end(); });
 describe('recording storage', () => {
   it('re-stores the provider recording to our store on call end', async () => {
     const store = new FakeStore();
-    const svc = new CallService(new MockTelephonyDriver(), new CallRepository(db), new BillingService(new WalletRepository(db)), store);
+    const svc = new CallService(new MockTelephonyDriver(), new CallRepository(db), new BillingService(new WalletRepository(db)), new EndUserRepository(db), store);
     const integratorId = (await new IntegratorRepository(db).create('rec')).id;
     const rec = await svc.startCall({ creatorNumber: '+919800000001', fanNumber: '+919800000002', record: true }, { integratorId });
 
@@ -47,7 +48,7 @@ describe('recording storage', () => {
 
   it('keeps the provider URL and never throws when the store fails', async () => {
     const failing: RecordingStore = { store: async () => { throw new Error('s3 down'); } };
-    const svc = new CallService(new MockTelephonyDriver(), new CallRepository(db), new BillingService(new WalletRepository(db)), failing);
+    const svc = new CallService(new MockTelephonyDriver(), new CallRepository(db), new BillingService(new WalletRepository(db)), new EndUserRepository(db), failing);
     const integratorId = (await new IntegratorRepository(db).create('rec2')).id;
     const rec = await svc.startCall({ creatorNumber: '+919800000001', fanNumber: '+919800000002', record: true }, { integratorId });
 

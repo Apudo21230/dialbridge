@@ -23,6 +23,9 @@ export interface NewCall {
   virtualNumber?: string;
   status: string;
   userRef?: string;
+  callerRef?: string;
+  receiverRef?: string;
+  ticket?: string;
   ratePerMinute?: number;
   maxSeconds?: number;
 }
@@ -31,6 +34,8 @@ export interface CallEventUpdate {
   status: string;
   billableSeconds?: number;
   recordingUrl?: string;
+  ringingAt?: Date;
+  answeredAt?: Date;
   endedAt?: Date;
 }
 
@@ -48,6 +53,9 @@ export class CallRepository {
         virtualNumber: c.virtualNumber,
         status: c.status,
         userRef: c.userRef,
+        callerRef: c.callerRef,
+        receiverRef: c.receiverRef,
+        ticket: c.ticket,
         ratePerMinute: c.ratePerMinute,
         maxSeconds: c.maxSeconds,
       })
@@ -82,6 +90,20 @@ export class CallRepository {
     await this.db.update(calls).set({ maxSeconds }).where(eq(calls.id, id));
   }
 
+  /** Every still-open call for a user (any rate) — used to cut calls when the user is blocked. */
+  async findOpenByUserRef(integratorId: string, userRef: string): Promise<CallRow[]> {
+    return this.db
+      .select()
+      .from(calls)
+      .where(
+        and(
+          eq(calls.integratorId, integratorId),
+          eq(calls.userRef, userRef),
+          inArray(calls.status, ['created', 'ringing', 'in_progress']),
+        ),
+      );
+  }
+
   async findByIdForIntegrator(id: string, integratorId: string): Promise<CallRow | undefined> {
     const [row] = await this.db
       .select()
@@ -96,6 +118,8 @@ export class CallRepository {
     const set: Partial<typeof calls.$inferInsert> = { status: u.status };
     if (typeof u.billableSeconds === 'number') set.billableSeconds = u.billableSeconds;
     if (u.recordingUrl) set.recordingUrl = u.recordingUrl;
+    if (u.ringingAt) set.ringingAt = u.ringingAt;
+    if (u.answeredAt) set.answeredAt = u.answeredAt;
     if (u.endedAt) set.endedAt = u.endedAt;
     const [row] = await this.db
       .update(calls)
@@ -135,9 +159,11 @@ export class CallRepository {
     limit: number,
     cursor?: { createdAt: string; id: string },
     status?: string,
+    integratorId?: string,
   ): Promise<AdminCallRow[]> {
     const conds = [];
     if (status) conds.push(eq(calls.status, status));
+    if (integratorId) conds.push(eq(calls.integratorId, integratorId));
     if (cursor) {
       const c = new Date(cursor.createdAt);
       conds.push(or(lt(calls.createdAt, c), and(eq(calls.createdAt, c), lt(calls.id, cursor.id)))!);
@@ -150,6 +176,17 @@ export class CallRepository {
       .orderBy(desc(calls.createdAt), desc(calls.id))
       .limit(limit);
     return rows.map((r) => ({ ...r.call, integratorName: r.integratorName }));
+  }
+
+  /** Admin: one call with its integrator name, for the call-detail view. */
+  async findByIdWithIntegrator(id: string): Promise<AdminCallRow | undefined> {
+    const [row] = await this.db
+      .select({ call: calls, integratorName: integrators.name })
+      .from(calls)
+      .innerJoin(integrators, eq(calls.integratorId, integrators.id))
+      .where(eq(calls.id, id))
+      .limit(1);
+    return row ? { ...row.call, integratorName: row.integratorName } : undefined;
   }
 
   /** Admin: platform-wide counters for the overview dashboard. */

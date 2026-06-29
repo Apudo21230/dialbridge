@@ -3,7 +3,9 @@ import type { AdminService } from './adminService.js';
 import type { AuditRepository } from './auditRepository.js';
 import type { IntegratorService } from '../integrators/integratorService.js';
 import type { IntegratorRepository } from '../integrators/integratorRepository.js';
-import type { CallRepository } from '../calls/callRepository.js';
+import type { CallRepository, AdminCallRow } from '../calls/callRepository.js';
+import type { CallService } from '../calls/callService.js';
+import type { EndUserRepository } from '../users/endUserRepository.js';
 import { requireAdmin } from '../auth/requireAdmin.js';
 
 interface IntegratorCreatedAt {
@@ -24,16 +26,43 @@ function decodeCursor(s: string): { createdAt: string; id: string } | undefined 
   }
 }
 
+/** Shared call shape for the admin list + detail. Real phone numbers are never present. */
+function callDto(c: AdminCallRow) {
+  return {
+    id: c.id,
+    integratorName: c.integratorName,
+    userRef: c.userRef,
+    callerRef: c.callerRef,
+    receiverRef: c.receiverRef,
+    ticket: c.ticket,
+    bookingId: c.bookingId,
+    status: c.status,
+    provider: c.provider,
+    virtualNumber: c.virtualNumber,
+    billableSeconds: c.billableSeconds,
+    maxSeconds: c.maxSeconds,
+    ratePerMinute: c.ratePerMinute,
+    cost: c.cost,
+    recordingUrl: c.recordingUrl,
+    createdAt: c.createdAt,
+    ringingAt: c.ringingAt,
+    answeredAt: c.answeredAt,
+    endedAt: c.endedAt,
+  };
+}
+
 export interface AdminRouterDeps {
   adminService: AdminService;
   integratorService: IntegratorService;
   integratorRepo: IntegratorRepository;
   callRepo: CallRepository;
+  callService: CallService;
+  endUserRepo: EndUserRepository;
   audit: AuditRepository;
 }
 
 export function createAdminRouter(deps: AdminRouterDeps): Router {
-  const { adminService, integratorService, integratorRepo, callRepo, audit } = deps;
+  const { adminService, integratorService, integratorRepo, callRepo, callService, endUserRepo, audit } = deps;
   const router = Router();
 
   router.post('/admin/login', async (req, res) => {
@@ -154,31 +183,25 @@ export function createAdminRouter(deps: AdminRouterDeps): Router {
   router.get('/admin/calls', requireAdmin, async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
     const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : undefined;
+    const integratorId = typeof req.query.integratorId === 'string' && req.query.integratorId ? req.query.integratorId : undefined;
     const cursor = typeof req.query.cursor === 'string' ? decodeCursor(req.query.cursor) : undefined;
 
-    const rows = await callRepo.listAllWithIntegrator(limit + 1, cursor, status);
+    const rows = await callRepo.listAllWithIntegrator(limit + 1, cursor, status, integratorId);
     const hasMore = rows.length > limit;
     const page = rows.slice(0, limit);
     const nextCursor = hasMore ? encodeCursor(page[page.length - 1]) : null;
 
-    res.status(200).json({
-      calls: page.map((c) => ({
-        id: c.id,
-        integratorName: c.integratorName,
-        userRef: c.userRef,
-        status: c.status,
-        provider: c.provider,
-        virtualNumber: c.virtualNumber,
-        billableSeconds: c.billableSeconds,
-        maxSeconds: c.maxSeconds,
-        ratePerMinute: c.ratePerMinute,
-        cost: c.cost,
-        recordingUrl: c.recordingUrl,
-        createdAt: c.createdAt,
-        endedAt: c.endedAt,
-      })),
-      nextCursor,
-    });
+    res.status(200).json({ calls: page.map(callDto), nextCursor });
+  });
+
+  // One call's full detail (participants, ticket, leg timings, recording).
+  router.get('/admin/calls/:id', requireAdmin, async (req, res) => {
+    const call = await callRepo.findByIdWithIntegrator(req.params.id);
+    if (!call) {
+      res.status(404).json({ error: 'not found' });
+      return;
+    }
+    res.status(200).json(callDto(call));
   });
 
   router.post('/admin/api-keys/:keyId/revoke', requireAdmin, async (req, res) => {
@@ -189,6 +212,50 @@ export function createAdminRouter(deps: AdminRouterDeps): Router {
     }
     await audit.record({ adminUserId: req.admin!.sub, action: 'apikey.revoke', targetType: 'api_key', targetId: revoked.id });
     res.status(200).json({ id: revoked.id, revokedAt: revoked.revokedAt });
+  });
+
+  // An integrator's end-users (the fans), with balance + call activity.
+  router.get('/admin/integrators/:id/users', requireAdmin, async (req, res) => {
+    const integrator = await integratorRepo.findById(req.params.id);
+    if (!integrator) {
+      res.status(404).json({ error: 'not found' });
+      return;
+    }
+    res.status(200).json({ users: await endUserRepo.listByIntegrator(integrator.id) });
+  });
+
+  // Block an end-user: cuts their open calls and stops new ones (balance is frozen, not refunded).
+  router.post('/admin/integrators/:id/users/:userRef/block', requireAdmin, async (req, res) => {
+    const integrator = await integratorRepo.findById(req.params.id);
+    if (!integrator) {
+      res.status(404).json({ error: 'not found' });
+      return;
+    }
+    const result = await callService.setUserBlocked(integrator.id, req.params.userRef, true);
+    await audit.record({
+      adminUserId: req.admin!.sub,
+      action: 'user.block',
+      targetType: 'end_user',
+      targetId: `${integrator.id}:${req.params.userRef}`,
+      metadata: { cutCalls: result.cutCalls.length },
+    });
+    res.status(200).json({ userRef: req.params.userRef, ...result });
+  });
+
+  router.post('/admin/integrators/:id/users/:userRef/unblock', requireAdmin, async (req, res) => {
+    const integrator = await integratorRepo.findById(req.params.id);
+    if (!integrator) {
+      res.status(404).json({ error: 'not found' });
+      return;
+    }
+    const result = await callService.setUserBlocked(integrator.id, req.params.userRef, false);
+    await audit.record({
+      adminUserId: req.admin!.sub,
+      action: 'user.unblock',
+      targetType: 'end_user',
+      targetId: `${integrator.id}:${req.params.userRef}`,
+    });
+    res.status(200).json({ userRef: req.params.userRef, ...result });
   });
 
   return router;

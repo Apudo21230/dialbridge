@@ -50,6 +50,13 @@ export const calls = pgTable('calls', {
   virtualNumber: varchar('virtual_number', { length: 20 }),
   status: varchar('status', { length: 20 }).notNull().default('created'),
   billableSeconds: integer('billable_seconds').notNull().default(0),
+  // Integrator-supplied identifiers (never real phone numbers): who called, who was called, their ticket.
+  callerRef: varchar('caller_ref', { length: 128 }),
+  receiverRef: varchar('receiver_ref', { length: 128 }),
+  ticket: varchar('ticket', { length: 128 }),
+  // Operator-reported leg timings (for the call timeline): ring → answer → end.
+  ringingAt: timestamp('ringing_at', { withTimezone: true }),
+  answeredAt: timestamp('answered_at', { withTimezone: true }),
   // Billing (when the platform meters the call). Money in minor units (e.g. paise).
   userRef: varchar('user_ref', { length: 128 }),
   ratePerMinute: integer('rate_per_minute'),
@@ -60,6 +67,21 @@ export const calls = pgTable('calls', {
   endedAt: timestamp('ended_at', { withTimezone: true }),
 }, (t) => ({
   providerSessionUniq: uniqueIndex('calls_provider_session_uniq').on(t.provider, t.providerSessionId),
+}));
+
+/**
+ * An integrator's end-user (e.g. a fan), keyed by (integrator, userRef).
+ * Lets us block an abusive user platform-side: a blocked user can't start calls
+ * and their active calls are cut, regardless of wallet balance.
+ */
+export const endUsers = pgTable('end_users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  integratorId: uuid('integrator_id').notNull().references(() => integrators.id),
+  userRef: varchar('user_ref', { length: 128 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // active | blocked
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  endUserUniq: uniqueIndex('end_users_integrator_user_uniq').on(t.integratorId, t.userRef),
 }));
 
 /** An end-user's prepaid balance, keyed by (integrator, userRef). Money in minor units. */
@@ -90,5 +112,6 @@ export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type AdminUserRow = typeof adminUsers.$inferSelect;
 export type AuditLogRow = typeof auditLogs.$inferSelect;
 export type CallRow = typeof calls.$inferSelect;
+export type EndUserRow = typeof endUsers.$inferSelect;
 export type WalletRow = typeof wallets.$inferSelect;
 export type WalletTransactionRow = typeof walletTransactions.$inferSelect;

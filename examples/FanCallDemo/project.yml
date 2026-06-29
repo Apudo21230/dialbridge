@@ -1,0 +1,67 @@
+# A real client iOS app that installs the Dialbridge SDK as a third-party
+# Swift Package, plus a Call Directory extension that labels masked numbers on
+# the native incoming-call screen. Generate the .xcodeproj with: xcodegen generate
+name: FanCallDemo
+options:
+  bundleIdPrefix: app.fancall.demo
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  # The third-party SDK, added like any SPM dependency (local path here; a Git
+  # URL in a real project).
+  DialbridgeSDK:
+    path: ../../ios-sdk
+
+targets:
+  FanCallDemo:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    configFiles:
+      Debug: Config/Secrets.xcconfig
+      Release: Config/Secrets.xcconfig
+    dependencies:
+      - package: DialbridgeSDK
+      - target: CallDirectory       # embed the caller-ID extension
+    entitlements:
+      path: Sources/FanCallDemo.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.fancall.demo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.fancall.demo.FanCallDemo
+        INFOPLIST_FILE: Sources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+
+  # Call Directory extension — adds caller-ID labels for masked numbers.
+  # It does NOT draw the incoming screen; iOS does that for the cellular call.
+  CallDirectory:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CallDirectory
+    entitlements:
+      path: CallDirectory/CallDirectory.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.fancall.demo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.fancall.demo.FanCallDemo.CallDirectory
+        INFOPLIST_FILE: CallDirectory/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""

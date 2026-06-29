@@ -71,6 +71,10 @@ struct OutgoingCallView: View {
         .task {
             controller.placeCall(creator: creator.number, fan: myNumber, userRef: userRef)
         }
+        .onChange(of: controller.maskedLine) { line in
+            // Label this masked number so the native incoming screen shows the name.
+            if let line { CallerIDDirectory.register(maskedNumber: line, label: "FanCall — \(creator.name)") }
+        }
     }
 
     private var maskedCard: some View {

@@ -42,3 +42,29 @@ the admin console under **Calls & recordings**.
 
 No VoIP/audio in the app — the operator places the real cellular call; neither party
 sees the other's real number.
+
+## What the receiver (creator) sees
+
+A **normal native iOS incoming-call screen** (green Accept / red Reject), shown by the
+OS because it's a real cellular call — **no app or internet needed on their side**. They
+accept like any phone call. The caller ID is the Dialbridge **masked number**, never the
+fan's real number. (The fan also joins via a cellular call, since the app carries no
+audio.)
+
+You can't replace that native screen — but you can **label** the masked number on it.
+
+## Caller-ID labels — the Call Directory extension
+
+`CallDirectory/` is a **CallKit Call Directory extension**. It does *not* draw the
+incoming screen; it only makes the native screen say e.g. **"FanCall — Aanya Sharma"**
+instead of a bare number.
+
+- The app records `maskedNumber → label` in a shared **App Group**
+  (`Sources/CallerIDDirectory.swift`, called from `OutgoingCallView` when the masked line
+  arrives) and reloads the extension.
+- The extension (`CallDirectory/CallDirectoryHandler.swift`) feeds those entries to iOS.
+
+**Testing:** caller-ID labels only show on a **real device** — enable it under
+*Settings ▸ Apps ▸ Phone ▸ Call Blocking & Identification ▸ FanCall*, and the label
+appears when that number actually rings (i.e. once the Tata DIGO driver places real
+calls). The simulator builds it but can't display it (no real calls).

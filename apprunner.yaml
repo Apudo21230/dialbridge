@@ -1,0 +1,17 @@
+# AWS App Runner — source-based deploy (no Docker needed).
+# App Runner ▸ Create service ▸ Source: GitHub ▸ pick this repo. It builds the
+# backend and runs it. Set secrets (DATABASE_URL, DATABASE_SSL, JWT_SECRET,
+# WEBHOOK_SECRET, AWS_*) in App Runner ▸ Configuration ▸ Environment.
+version: 1.0
+runtime: nodejs18
+build:
+  commands:
+    build:
+      - cd backend && npm ci && npm run build
+run:
+  command: cd backend && npm run start:prod
+  network:
+    port: 3000
+  env:
+    - name: NODE_ENV
+      value: production

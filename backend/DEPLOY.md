@@ -50,9 +50,37 @@ Release: npm run migrate:prod        # node dist/db/migrate.js
 Start:   npm run start               # node dist/server.js
 ```
 
-### Render / Railway / Fly (quick path)
+### AWS — App Runner + RDS (recommended; you're already on AWS for S3)
 
-1. Create a **PostgreSQL** instance → copy its connection string into `DATABASE_URL`.
+**Architecture:** App Runner runs the backend (auto **HTTPS** + auto-scale, no servers to
+manage) · **RDS PostgreSQL** is the database · S3 holds recordings.
+
+1. **RDS** — create a PostgreSQL instance (e.g. `db.t4g.micro`). Note endpoint / db / user /
+   password → `DATABASE_URL=postgres://USER:PASS@ENDPOINT:5432/dialbridge`.
+   RDS uses TLS, so also set **`DATABASE_SSL=require`**.
+2. **App Runner** — *Create service ▸ Source: GitHub* → connect this repo. App Runner reads
+   [`apprunner.yaml`](../apprunner.yaml) (builds `backend/`, runs `start:prod`) — **no Docker
+   needed**. Set the port to `3000` and health check `/health`.
+3. **Env vars** (App Runner ▸ Configuration ▸ Environment): `DATABASE_URL`,
+   `DATABASE_SSL=require`, `JWT_SECRET`, `WEBHOOK_SECRET`, `AWS_REGION`, `AWS_BUCKET`,
+   `AWS_FOLDER`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (`NODE_ENV` is set by
+   `apprunner.yaml`).
+4. **VPC connector** — App Runner ▸ Networking ▸ add a VPC connector on the same VPC/subnets
+   as RDS, and allow its security group on the RDS security group (port `5432`), so the
+   service can reach the database.
+5. App Runner gives you an **HTTPS URL** (`https://xxx.<region>.awsapprunner.com`) — that's
+   your API base for the SDKs.
+
+> **IAM:** the `Fancall_S3` user is S3-only. Creating RDS/App Runner needs broader
+> permissions — do it as an admin/role with `apprunner:*`, `rds:*`, plus VPC/EC2 networking.
+>
+> **Alternative (container):** build the included `Dockerfile` (Node 20), push to **ECR**,
+> and point App Runner at the image instead of GitHub — exact runtime, but needs Docker to
+> build. **Cheaper/manual:** an **EC2** box running the image behind nginx/ALB + a cert.
+
+### Other platforms (Railway / Fly / your server)
+
+1. Create **PostgreSQL** → `DATABASE_URL` (add `DATABASE_SSL=require` if it uses TLS).
 2. Create a **web service** from this repo, root = `backend/` (Docker or Node buildpack).
 3. Add the env vars above. The platform's HTTPS URL becomes your API base.
 
